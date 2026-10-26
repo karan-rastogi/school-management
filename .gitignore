@@ -1,6 +1,7 @@
 # Secrets
 .env
 .env.local
+!.env.example
 
 # Logs
 *.log
@@ -8,6 +9,8 @@
 # Frontend
 node_modules/
 dist/
+.vite/
+*.tsbuildinfo
 
 # Backend (Maven)
 target/
