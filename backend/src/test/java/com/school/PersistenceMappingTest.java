@@ -30,33 +30,16 @@ import com.school.user.repository.UserRepository;
 import com.school.user.repository.UserRoleRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Testcontainers(disabledWithoutDocker = true)
-class PersistenceMappingTest {
-
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void datasourceProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
+class PersistenceMappingTest extends AbstractPostgresTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -95,11 +78,19 @@ class PersistenceMappingTest {
     private NoticeRepository noticeRepository;
 
     @Test
-    void everyMigrationIsAppliedAndHibernateValidatesTheResultingSchema() {
+    void everyMigrationIsAppliedAndHibernateValidatesTheResultingSchema() throws Exception {
+        long migrationFiles = new PathMatchingResourcePatternResolver()
+                .getResources("classpath:db/migration/V*.sql")
+                .length;
+
         Integer applied = jdbcTemplate.queryForObject(
                 "select count(*) from flyway_schema_history where success", Integer.class);
+        Integer failed = jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where not success", Integer.class);
 
-        assertThat(applied).isEqualTo(6);
+        assertThat(migrationFiles).isPositive();
+        assertThat(applied).isEqualTo((int) migrationFiles);
+        assertThat(failed).isZero();
     }
 
     @Test

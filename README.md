@@ -96,12 +96,19 @@ cd frontend && npm run build          # dist/
 
 ## Endpoints
 
-| Method | Path                 | Access        |
-| ------ | -------------------- | ------------- |
-| `GET`  | `/api/health`        | public        |
-| `GET`  | `/actuator/health`   | public        |
-| `GET`  | `/actuator/info`     | public        |
-| —      | everything else      | authenticated |
+| Method | Path                          | Access                          |
+| ------ | ----------------------------- | ------------------------------- |
+| `GET`  | `/api/health`                 | public                          |
+| `GET`  | `/actuator/health`, `/actuator/info` | public                   |
+| `GET`  | `/oauth2/authorization/google` | public (starts the Google flow) |
+| `POST` | `/auth/otp/request`           | public                          |
+| `POST` | `/auth/otp/verify`            | public                          |
+| `POST` | `/auth/refresh`               | public (needs the refresh cookie) |
+| `POST` | `/auth/logout`                | public (clears the session)     |
+| `GET`  | `/me`                         | authenticated                   |
+| `POST` | `/me/active-role`             | authenticated                   |
+| `GET`  | `/admin/users`                | `ADMIN` only                    |
+| —      | everything else               | authenticated                   |
 
 ```bash
 curl http://localhost:8080/api/health
@@ -115,6 +122,106 @@ curl http://localhost:8080/api/health
   "timestamp": "2026-10-26T23:58:20.7459126+05:30"
 }
 ```
+
+## Authentication
+
+### Signing in
+
+**Google.** `GET /oauth2/authorization/google` runs the OAuth2 authorization-code
+flow. On success the handler looks the address up in `users`:
+
+- no such row → rejected, redirected to `/login?error=not_registered`
+- row exists but `active = false` → `/login?error=account_disabled`
+- otherwise → session cookies are set and the browser lands on `/auth/callback`
+
+There is **no auto-signup**: an unknown address never creates a user. The redirect
+only ever carries an opaque code — never the address.
+
+**Phone OTP.** `POST /auth/otp/request` and `POST /auth/otp/verify`.
+
+```bash
+curl -i -X POST http://localhost:8080/auth/otp/request \
+  -H 'Content-Type: application/json' -d '{"phone":"+919876543210"}'
+
+curl -i -c cookies.txt -X POST http://localhost:8080/auth/otp/verify \
+  -H 'Content-Type: application/json' -d '{"phone":"+919876543210","code":"123456"}'
+```
+
+OTP rules:
+
+- Only a hash of the code is stored (BCrypt); the plaintext is never persisted.
+- Codes expire after `app.auth.otp.ttl` (5 minutes) and are single-use.
+- At most `app.auth.otp.max-attempts` (5) wrong guesses per code; the code is
+  then refused even if the right value is finally supplied.
+- Requests are rate limited **per phone** and **per client address**; verifications
+  are too. Exceeding a limit returns `429` with code `RATE_LIMITED`.
+- A code is only issued for a phone that belongs to an **active, pre-registered**
+  user. The response is the same either way, so the endpoint cannot be used to
+  discover which numbers are on file.
+
+### Sessions
+
+Both sign-in paths end the same way: an **access JWT** and an **opaque refresh
+token** are placed in cookies.
+
+| Cookie          | Contents                | Path   | Lifetime             |
+| --------------- | ----------------------- | ------ | -------------------- |
+| `access_token`  | HS256 JWT (`sub` = user id, `act` = active role) | `/` | `app.auth.jwt.access-token-ttl` (15 min) |
+| `refresh_token` | 256-bit random, stored as a SHA-256 hash in `refresh_tokens` | `/auth` | `app.auth.jwt.refresh-token-ttl` (30 days) |
+
+Both cookies are `HttpOnly`, `Secure` and `SameSite=Lax`. `Secure` still works on
+`http://localhost`, which browsers treat as a trustworthy origin.
+
+`POST /auth/refresh` rotates: the presented refresh token is revoked and a new one
+is issued. Presenting an already-revoked token is treated as theft and revokes
+every refresh token for that user. `POST /auth/logout` revokes the refresh token
+and clears both cookies.
+
+The JWT deliberately carries **no personal data** — no email, no phone, no name.
+Authorities are loaded from `users` / `user_roles` on every request, so deactivating
+an account or removing a role takes effect immediately rather than when the token
+expires.
+
+> **CSRF:** the session is cookie-based, so cross-site state-changing requests are
+> blocked by `SameSite=Lax` (they never carry the cookie) plus the strict CORS
+> origin allow-list. CSRF tokens are disabled on that basis; if you ever serve the
+> SPA from a different site, add a double-submit token.
+
+### Roles and the role switcher
+
+A user may hold several roles. `GET /me` returns `roles` and the `activeRole`.
+`POST /me/active-role` switches it — only to a role the user actually holds — and
+re-issues the access cookie. The choice is remembered on the refresh-token row, so
+it survives `POST /auth/refresh`; pass null (never choose) and it falls back to the
+first role the account holds. All of a user's roles stay in `getAuthorities()`, so
+switching changes which surface the UI shows, never what the server permits: an
+admin who switches to "acting as TEACHER" can still open admin pages, because they
+really are an admin.
+
+Method security is enabled (`@EnableMethodSecurity`); `GET /admin/users` is guarded
+with `@PreAuthorize("hasRole('ADMIN')")` and returns `403 FORBIDDEN` for anyone else.
+
+### Creating the first user
+
+There is no admin UI yet, so bootstrap the first account with SQL:
+
+```sql
+INSERT INTO users (email, phone, name, active)
+VALUES ('head@school.test', '+919876543210', 'Head Teacher', TRUE)
+RETURNING id;
+
+INSERT INTO user_roles (user_id, role) VALUES (<id>, 'ADMIN');
+```
+
+With `OTP_SENDER=console` the code is printed to the backend log:
+
+```
+OTP (dev console sender) for ****3210 is 483920 and is valid for 5 minutes.
+```
+
+The phone is masked in logs; set `OTP_SENDER=sms` to route through an SMS provider
+(the bundled `SmsOtpSender` is a stub and returns `501 NOT_IMPLEMENTED` until one
+is wired up).
 
 ## Error format
 
@@ -153,7 +260,6 @@ they are logged server-side.
 Business code raises `ApiException` (status + code + message) and the
 `@RestControllerAdvice` renders it, so there is one error shape everywhere.
 
-feature/02-database-schema
 ## Database schema
 
 The schema is owned by Flyway; JPA entities are validated against it on startup
@@ -168,6 +274,8 @@ never silently drift apart.
 | `V4__teacher_assignments_and_calendar.sql` | `teacher_assignments`, `school_calendar`                        |
 | `V5__attendance.sql`                  | `attendance`, `attendance_audit_log`, `attendance_queries`           |
 | `V6__notices_and_otp_codes.sql`       | `notices`, `otp_codes`                                               |
+| `V7__refresh_tokens.sql`              | `refresh_tokens`                                                     |
+| `V8__refresh_token_active_role.sql`   | adds `refresh_tokens.active_role`                                    |
 
 Conventions:
 
@@ -183,8 +291,6 @@ Conventions:
 - Entity packages live in `com.school.<feature>.domain`, repositories in
   `com.school.<feature>.repository`.
 
-
-main
 ## Project rules
 
 These are enforced/observed throughout the codebase:
@@ -203,7 +309,6 @@ These are enforced/observed throughout the codebase:
 ## Tests
 
 ```bash
-feature/02-database-schema
 cd backend  && mvn test          # unit, MockMvc slice, and PostgreSQL integration tests
 cd frontend && npm run typecheck # tsc --noEmit
 ```
@@ -214,7 +319,9 @@ entities against the result, and asserts the key constraints (daily attendance
 uniqueness, the notice scope/class rule, database-generated QR tokens). It is
 skipped automatically when Docker is unavailable.
 
-cd backend  && mvn test          # MockMvc slice tests + exception-handler unit tests
-cd frontend && npm run typecheck # tsc --noEmit
-```
-main
+`AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
+attributes, `/me`, refresh rotation and reuse detection, logout, the role
+switcher, and the admin-only endpoint. `OtpServiceTest` covers the OTP rules in
+isolation (hashing, expiry, the five-attempt ceiling, single use, and the per-phone
+and per-client-address rate limits), and `OAuth2LoginSuccessHandlerTest` covers
+the "no auto-signup" rejection paths.

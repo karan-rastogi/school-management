@@ -6,9 +6,18 @@ export type ErrorCode =
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
   | "CONFLICT"
+  | "RATE_LIMITED"
+  | "OTP_INVALID"
+  | "OTP_EXPIRED"
+  | "OTP_ATTEMPTS_EXCEEDED"
+  | "ACCOUNT_NOT_REGISTERED"
+  | "ACCOUNT_DISABLED"
+  | "NOT_IMPLEMENTED"
   | "INTERNAL_ERROR"
   | "NETWORK_ERROR"
   | "UNKNOWN_ERROR";
+
+export type Role = "ADMIN" | "TEACHER" | "PARENT";
 
 export interface FieldViolation {
   field: string;
@@ -30,4 +39,27 @@ export interface HealthResponse {
   application: string;
   timeZone: string;
   timestamp: string;
+}
+
+export interface CurrentUser {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  roles: Role[];
+  activeRole: Role;
+}
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  active: boolean;
+  roles: Role[];
+}
+
+export interface OtpRequestResponse {
+  status: string;
+  message: string;
 }
