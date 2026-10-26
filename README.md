@@ -153,6 +153,7 @@ they are logged server-side.
 Business code raises `ApiException` (status + code + message) and the
 `@RestControllerAdvice` renders it, so there is one error shape everywhere.
 
+feature/02-database-schema
 ## Database schema
 
 The schema is owned by Flyway; JPA entities are validated against it on startup
@@ -182,6 +183,8 @@ Conventions:
 - Entity packages live in `com.school.<feature>.domain`, repositories in
   `com.school.<feature>.repository`.
 
+
+main
 ## Project rules
 
 These are enforced/observed throughout the codebase:
@@ -200,6 +203,7 @@ These are enforced/observed throughout the codebase:
 ## Tests
 
 ```bash
+feature/02-database-schema
 cd backend  && mvn test          # unit, MockMvc slice, and PostgreSQL integration tests
 cd frontend && npm run typecheck # tsc --noEmit
 ```
@@ -209,3 +213,8 @@ Testcontainers, runs every Flyway migration, lets Hibernate validate all
 entities against the result, and asserts the key constraints (daily attendance
 uniqueness, the notice scope/class rule, database-generated QR tokens). It is
 skipped automatically when Docker is unavailable.
+
+cd backend  && mvn test          # MockMvc slice tests + exception-handler unit tests
+cd frontend && npm run typecheck # tsc --noEmit
+```
+main
