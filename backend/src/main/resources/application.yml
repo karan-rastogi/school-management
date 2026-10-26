@@ -3,6 +3,9 @@ spring:
     name: school-management-backend
   config:
     import: optional:file:../.env[.properties]
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/school}
     username: ${DB_USERNAME:school}
@@ -25,6 +28,17 @@ spring:
     locations: classpath:db/migration
   jackson:
     default-property-inclusion: non_null
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
+            scope:
+              - openid
+              - email
+              - profile
 
 server:
   port: ${SERVER_PORT:8080}
@@ -49,6 +63,27 @@ app:
     allowed-headers: "*"
     allow-credentials: true
     max-age-seconds: 3600
+  auth:
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    jwt:
+      secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-0123456789}
+      issuer: ${JWT_ISSUER:school-management}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+    cookie:
+      secure: ${AUTH_COOKIE_SECURE:true}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    otp:
+      ttl: ${OTP_TTL:PT5M}
+      length: ${OTP_LENGTH:6}
+      max-attempts: ${OTP_MAX_ATTEMPTS:5}
+      sender: ${OTP_SENDER:console}
+      rate-limit:
+        phone-requests: ${OTP_RATE_PHONE_REQUESTS:3}
+        phone-verifies: ${OTP_RATE_PHONE_VERIFIES:10}
+        ip-requests: ${OTP_RATE_IP_REQUESTS:10}
+        ip-verifies: ${OTP_RATE_IP_VERIFIES:30}
+        window: ${OTP_RATE_WINDOW:PT15M}
 
 logging:
   level:
