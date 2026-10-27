@@ -5,6 +5,7 @@ const LINKS = [
   { to: "/admin/import", label: "Import CSV" },
   { to: "/admin/academic-years", label: "Academic years" },
   { to: "/admin/classes", label: "Classes" },
+  { to: "/admin/calendar", label: "Calendar" },
   { to: "/admin/teachers", label: "Teachers" },
   { to: "/admin/parents", label: "Parents" },
   { to: "/admin/teacher-assignments", label: "Assignments" },
