@@ -246,3 +246,81 @@ export interface WorkingDaysSummary {
   to: string;
   workingDays: number;
 }
+
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "EXCUSED";
+
+export type AttendanceSource = "QR" | "MANUAL" | "PAPER_BACKFILL";
+
+export interface AttendanceRosterRow {
+  studentId: number;
+  fullName: string;
+  admissionNo: string;
+  photoPath?: string | null;
+  rollNo?: number | null;
+  status?: AttendanceStatus | null;
+  markedAt?: string | null;
+  source?: AttendanceSource | null;
+}
+
+export interface AttendanceCounts {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  halfDay: number;
+  excused: number;
+  unmarked: number;
+}
+
+export interface AttendanceRoster {
+  classId: number;
+  className: string;
+  section: string;
+  academicYearName: string;
+  date: string;
+  workingDay: boolean;
+  counts: AttendanceCounts;
+  students: AttendanceRosterRow[];
+}
+
+export interface AttendanceScanRequest {
+  qrToken: string;
+  classId: number;
+  date: string;
+}
+
+export interface AttendanceScanResult {
+  studentId: number;
+  fullName: string;
+  photoPath?: string | null;
+  status?: AttendanceStatus | null;
+  markedAt?: string | null;
+  marked: boolean;
+  alreadyMarked: boolean;
+  warning?: string | null;
+  message: string;
+}
+
+export type AttendanceRole = "CLASS_TEACHER" | "SUBSTITUTE" | "ADMIN";
+
+export interface MarkableClass {
+  classId: number;
+  className: string;
+  section: string;
+  academicYearName: string;
+  role: AttendanceRole;
+}
+
+export interface SubstitutePermission {
+  id: number;
+  teacherUserId: number;
+  teacherName: string;
+  classId: number;
+  className: string;
+  section: string;
+  academicYearName: string;
+  validFrom: string;
+  validUntil: string;
+  reason?: string | null;
+  grantedAt: string;
+}

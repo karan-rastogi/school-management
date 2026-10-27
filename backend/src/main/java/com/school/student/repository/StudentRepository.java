@@ -8,10 +8,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
 
     Optional<Student> findByAdmissionNoIgnoreCase(String admissionNo);
+
+    Optional<Student> findByQrToken(UUID qrToken);
 
     boolean existsByAdmissionNoIgnoreCase(String admissionNo);
 

@@ -32,4 +32,25 @@ public interface StudentEnrollmentRepository extends JpaRepository<StudentEnroll
               and (e.toDate is null or e.toDate >= :onDate)
             """)
     boolean existsActiveEnrollment(@Param("studentId") Long studentId, @Param("onDate") LocalDate onDate);
+
+    @Query("""
+            select e from StudentEnrollment e
+            join fetch e.student
+            where e.schoolClass.id = :classId
+              and e.fromDate <= :onDate
+              and (e.toDate is null or e.toDate >= :onDate)
+            """)
+    List<StudentEnrollment> findRosterFor(@Param("classId") Long classId, @Param("onDate") LocalDate onDate);
+
+    @Query("""
+            select count(e) > 0 from StudentEnrollment e
+            where e.student.id = :studentId
+              and e.schoolClass.id = :classId
+              and e.fromDate <= :onDate
+              and (e.toDate is null or e.toDate >= :onDate)
+            """)
+    boolean existsEnrollmentInClass(
+            @Param("studentId") Long studentId,
+            @Param("classId") Long classId,
+            @Param("onDate") LocalDate onDate);
 }
