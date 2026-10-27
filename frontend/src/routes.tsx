@@ -3,6 +3,7 @@ import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AcademicYearsPage } from "./pages/admin/AcademicYearsPage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
+import { CalendarPage } from "./pages/admin/CalendarPage";
 import { ClassesPage } from "./pages/admin/ClassesPage";
 import { ParentLinksPage } from "./pages/admin/ParentLinksPage";
 import { StudentDetailPage } from "./pages/admin/StudentDetailPage";
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
           { path: "import", element: <StudentImportPage /> },
           { path: "academic-years", element: <AcademicYearsPage /> },
           { path: "classes", element: <ClassesPage /> },
+          { path: "calendar", element: <CalendarPage /> },
           {
             path: "teachers",
             element: (

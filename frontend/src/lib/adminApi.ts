@@ -3,11 +3,13 @@ import type {
   AcademicYear,
   AcademicYearInput,
   AdminUser,
+  CalendarDay,
   Child,
   Enrollment,
   EnrollmentInput,
   PageResponse,
   Role,
+  SchoolCalendarDayType,
   SchoolClass,
   SchoolClassInput,
   Student,
@@ -19,6 +21,7 @@ import type {
   TeacherAssignment,
   TeacherAssignmentInput,
   UserInput,
+  WorkingDaysSummary,
 } from "../types/api";
 
 export interface PageParams {
@@ -251,4 +254,30 @@ export async function unlinkParentStudent(parentUserId: number, studentId: numbe
 export async function importStudents(csv: string, dryRun: boolean): Promise<StudentImportReport> {
   const response = await apiClient.post<StudentImportReport>("/admin/students/import", { csv, dryRun });
   return response.data;
+}
+
+/* School calendar */
+
+export async function calendarRange(from: string, to: string): Promise<CalendarDay[]> {
+  const response = await apiClient.get<CalendarDay[]>("/admin/calendar", { params: { from, to } });
+  return response.data;
+}
+
+export async function workingDays(from: string, to: string): Promise<WorkingDaysSummary> {
+  const response = await apiClient.get<WorkingDaysSummary>("/admin/calendar/working-days", {
+    params: { from, to },
+  });
+  return response.data;
+}
+
+export async function markCalendarDay(
+  date: string,
+  input: { type: SchoolCalendarDayType; description: string },
+): Promise<CalendarDay> {
+  const response = await apiClient.put<CalendarDay>(`/admin/calendar/${date}`, input);
+  return response.data;
+}
+
+export async function clearCalendarDay(date: string): Promise<void> {
+  await apiClient.delete(`/admin/calendar/${date}`);
 }

@@ -231,3 +231,18 @@ export interface StudentImportReport {
   canCommit: boolean;
   rows: StudentImportRow[];
 }
+
+export type SchoolCalendarDayType = "WORKING" | "HOLIDAY" | "HALF_DAY" | "EXAM";
+
+export interface CalendarDay {
+  date: string;
+  type?: SchoolCalendarDayType | null;
+  working: boolean;
+  description?: string | null;
+}
+
+export interface WorkingDaysSummary {
+  from: string;
+  to: string;
+  workingDays: number;
+}
