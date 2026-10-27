@@ -9,6 +9,7 @@ public enum ErrorCode {
     UNAUTHENTICATED,
     FORBIDDEN,
     CONFLICT,
+    DUPLICATE,
     RATE_LIMITED,
     OTP_INVALID,
     OTP_EXPIRED,

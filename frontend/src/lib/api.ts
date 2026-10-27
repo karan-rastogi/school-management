@@ -1,6 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import type {
-  AdminUser,
   ApiError,
   CurrentUser,
   HealthResponse,
@@ -120,11 +119,6 @@ export async function endSession(): Promise<void> {
 
 export async function updateActiveRole(role: Role): Promise<CurrentUser> {
   const response = await apiClient.post<CurrentUser>("/me/active-role", { role });
-  return response.data;
-}
-
-export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const response = await apiClient.get<AdminUser[]>("/admin/users");
   return response.data;
 }
 

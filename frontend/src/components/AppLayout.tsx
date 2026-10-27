@@ -24,7 +24,7 @@ export function AppLayout() {
           </NavLink>
           {user?.roles.includes("ADMIN") ? (
             <NavLink to="/admin" className={linkClass}>
-              Users
+              Admin
             </NavLink>
           ) : null}
 
