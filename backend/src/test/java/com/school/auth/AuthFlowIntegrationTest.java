@@ -131,7 +131,7 @@ class AuthFlowIntegrationTest extends AbstractPostgresTest {
 
         mockMvc.perform(get("/admin/users").cookie(new Cookie(ACCESS_COOKIE, adminToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$.content").isArray());
 
         mockMvc.perform(get("/admin/users").cookie(new Cookie(ACCESS_COOKIE, teacherToken)))
                 .andExpect(status().isForbidden())

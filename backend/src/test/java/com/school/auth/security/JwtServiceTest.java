@@ -5,9 +5,11 @@ import com.school.auth.config.AuthProperties;
 import com.school.user.domain.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
@@ -25,6 +27,7 @@ class JwtServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-27T06:00:00Z");
     private static final String SECRET = "test-secret-that-is-long-enough-for-hs256-0123456789";
+    private static final String ISSUER = "school-management";
 
     private AuthConfig authConfig;
     private Clock clock;
@@ -50,67 +53,92 @@ class JwtServiceTest {
 
     @Test
     void rejectsATokenSignedWithAnotherKey() {
-        JwtService issuer = jwtService(Duration.ofMinutes(15));
-        String token = issuer.issueAccessToken(42L, Role.ADMIN);
+        String token = jwtService(Duration.ofMinutes(15)).issueAccessToken(42L, Role.ADMIN);
 
-        AuthProperties otherProperties = properties(
-                "another-secret-that-is-also-long-enough-for-hs256-9876543210", Duration.ofMinutes(15));
+        String otherSecret = "another-secret-that-is-also-long-enough-for-hs256-9876543210";
+        AuthProperties otherProperties = properties(otherSecret, Duration.ofMinutes(15));
         JwtService verifier = new JwtService(
-                authConfig.jwtEncoder(otherProperties), authConfig.jwtDecoder(otherProperties), otherProperties, clock);
+                authConfig.jwtEncoder(otherProperties), decoderValidatingAt(otherSecret, NOW), otherProperties, clock);
 
         assertThat(verifier.readAccessToken(token)).isEmpty();
     }
 
     @Test
-    void rejectsAnExpiredToken() {
+    void rejectsATokenOnceItsLifetimeHasPassed() {
         AuthProperties properties = properties(SECRET, Duration.ofMinutes(15));
         JwtService issuer = new JwtService(
-                authConfig.jwtEncoder(properties), authConfig.jwtDecoder(properties), properties, clock);
+                authConfig.jwtEncoder(properties), decoderValidatingAt(NOW), properties, clock);
 
         String token = issuer.issueAccessToken(42L, Role.ADMIN);
         assertThat(issuer.readAccessToken(token)).isPresent();
 
-        JwtService later = new JwtService(
-                authConfig.jwtEncoder(properties), decoderValidatingAt(NOW.plus(Duration.ofHours(1))), properties, clock);
+        JwtService oneHourLater = new JwtService(
+                authConfig.jwtEncoder(properties),
+                decoderValidatingAt(NOW.plus(Duration.ofHours(1))),
+                properties,
+                clock);
 
-        assertThat(later.readAccessToken(token)).isEmpty();
+        assertThat(oneHourLater.readAccessToken(token)).isEmpty();
+    }
+
+    @Test
+    void rejectsATokenFromAnotherIssuer() {
+        AuthProperties otherIssuer = new AuthProperties(
+                "http://localhost:5173",
+                new AuthProperties.Jwt(SECRET, "somewhere-else", Duration.ofMinutes(15), Duration.ofDays(30)),
+                new AuthProperties.Cookie(true, "Lax"),
+                otp());
+
+        String token = new JwtService(
+                authConfig.jwtEncoder(otherIssuer), decoderValidatingAt(NOW), otherIssuer, clock)
+                .issueAccessToken(42L, Role.ADMIN);
+
+        assertThat(jwtService(Duration.ofMinutes(15)).readAccessToken(token)).isEmpty();
     }
 
     @Test
     void rejectsGarbage() {
-        JwtService jwtService = jwtService(Duration.ofMinutes(15));
-
-        assertThat(jwtService.readAccessToken("not-a-jwt")).isEmpty();
+        assertThat(jwtService(Duration.ofMinutes(15)).readAccessToken("not-a-jwt")).isEmpty();
     }
 
     private JwtService jwtService(Duration accessTokenTtl) {
         AuthProperties properties = properties(SECRET, accessTokenTtl);
         JwtEncoder encoder = authConfig.jwtEncoder(properties);
-        JwtDecoder decoder = authConfig.jwtDecoder(properties);
-        return new JwtService(encoder, decoder, properties, clock);
+        return new JwtService(encoder, decoderValidatingAt(NOW), properties, clock);
     }
 
     private JwtDecoder decoderValidatingAt(Instant validationTime) {
+        return decoderValidatingAt(SECRET, validationTime);
+    }
+
+    private JwtDecoder decoderValidatingAt(String secret, Instant validationTime) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(
-                        new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                        new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
-        timestampValidator.setClock(Clock.fixed(validationTime, ZoneOffset.UTC));
-        decoder.setJwtValidator(timestampValidator);
+
+        JwtTimestampValidator timestamps = new JwtTimestampValidator();
+        timestamps.setClock(Clock.fixed(validationTime, ZoneOffset.UTC));
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                timestamps, new JwtIssuerValidator(ISSUER)));
         return decoder;
     }
 
     private AuthProperties properties(String secret, Duration accessTokenTtl) {
         return new AuthProperties(
                 "http://localhost:5173",
-                new AuthProperties.Jwt(secret, "school-management", accessTokenTtl, Duration.ofDays(30)),
+                new AuthProperties.Jwt(secret, ISSUER, accessTokenTtl, Duration.ofDays(30)),
                 new AuthProperties.Cookie(true, "Lax"),
-                new AuthProperties.Otp(
-                        Duration.ofMinutes(5),
-                        6,
-                        5,
-                        "console",
-                        new AuthProperties.RateLimit(3, 10, 10, 30, Duration.ofMinutes(15))));
+                otp());
+    }
+
+    private AuthProperties.Otp otp() {
+        return new AuthProperties.Otp(
+                Duration.ofMinutes(5),
+                6,
+                5,
+                "console",
+                new AuthProperties.RateLimit(3, 10, 10, 30, Duration.ofMinutes(15)));
     }
 }

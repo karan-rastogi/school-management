@@ -244,6 +244,13 @@ class PersistenceMappingTest extends AbstractPostgresTest {
     }
 
     private AcademicYear persistAcademicYear(String name, boolean current) {
+        if (current) {
+            academicYearRepository.findByCurrentIsTrue().ifPresent(existing -> {
+                existing.setCurrent(false);
+                academicYearRepository.saveAndFlush(existing);
+            });
+        }
+
         AcademicYear academicYear = new AcademicYear();
         academicYear.setName(name);
         academicYear.setStartDate(LocalDate.of(2025, 4, 1));
