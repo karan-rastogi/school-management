@@ -9,6 +9,7 @@ const LINKS = [
   { to: "/admin/teachers", label: "Teachers" },
   { to: "/admin/parents", label: "Parents" },
   { to: "/admin/teacher-assignments", label: "Assignments" },
+  { to: "/admin/substitutes", label: "Substitutes" },
   { to: "/admin/parent-links", label: "Parent links" },
 ];
 

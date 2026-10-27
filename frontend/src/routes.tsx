@@ -9,12 +9,14 @@ import { ParentLinksPage } from "./pages/admin/ParentLinksPage";
 import { StudentDetailPage } from "./pages/admin/StudentDetailPage";
 import { StudentImportPage } from "./pages/admin/StudentImportPage";
 import { StudentsPage } from "./pages/admin/StudentsPage";
+import { SubstitutesPage } from "./pages/admin/SubstitutesPage";
 import { TeacherAssignmentsPage } from "./pages/admin/TeacherAssignmentsPage";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { TeacherAttendancePage } from "./pages/TeacherAttendancePage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -28,6 +30,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <HomePage /> },
+      {
+        path: "attendance",
+        element: (
+          <ProtectedRoute requiredRole={["ADMIN", "TEACHER"]}>
+            <TeacherAttendancePage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: "admin",
         element: (
@@ -64,6 +74,7 @@ export const router = createBrowserRouter([
             ),
           },
           { path: "teacher-assignments", element: <TeacherAssignmentsPage /> },
+          { path: "substitutes", element: <SubstitutesPage /> },
           { path: "parent-links", element: <ParentLinksPage /> },
         ],
       },
