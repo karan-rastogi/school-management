@@ -113,6 +113,15 @@ cd frontend && npm run build          # dist/
 | `POST` | `/parent/children/{id}/attendance-queries` | `PARENT` only (own children) |
 | `GET`  | `/attendance/queries`         | `ADMIN` / `TEACHER`             |
 | `POST` | `/attendance/queries/{id}/resolve` | `ADMIN` / `TEACHER`        |
+| `GET`  | `/notices`, `/notices/assignable-classes` | `ADMIN` / `TEACHER`   |
+| `POST` | `/notices`                    | `ADMIN` (global) / `TEACHER` (own class) |
+| `PUT`  | `/notices/{id}`               | sender or `ADMIN`               |
+| `DELETE` | `/notices/{id}`             | sender or `ADMIN` (soft delete) |
+| `POST` | `/notices/{id}/attachment`    | sender or `ADMIN`               |
+| `DELETE` | `/notices/{id}/attachment`  | sender or `ADMIN`               |
+| `POST` | `/notices/{id}/holiday`       | `ADMIN` only                    |
+| `GET`  | `/notices/attachments/{id}`   | public (valid signed URL)       |
+| `GET`  | `/parent/notices`             | `PARENT` only                   |
 | —      | everything else               | authenticated                   |
 
 ```bash
@@ -283,6 +292,7 @@ never silently drift apart.
 | `V8__refresh_token_active_role.sql`   | adds `refresh_tokens.active_role`                                    |
 | `V9__substitute_permissions.sql`      | `substitute_permissions`                                             |
 | `V10__attendance_query_message.sql`   | adds `attendance_queries.message`                                    |
+| `V11__notice_attachments.sql`         | adds notice attachment columns                                       |
 
 Conventions:
 
@@ -318,6 +328,13 @@ These are enforced/observed throughout the codebase:
 - **Every attendance change** is written to an audit log (who, when, old
   value, new value).
 - **No personal data** in URLs, logs or QR codes.
+- **Notices** are `GLOBAL` or class-scoped. Admins post global notices; a teacher may only post a
+  class notice to a class they are assigned to, and the `sender_label` is frozen from that
+  assignment at send time (e.g. `Maths Teacher - Mrs Sharma`). Parents see global notices plus
+  class notices for each child's class, labelled with the child's name. Editing stamps `edited_at`
+  (shown as an “edited” badge); delete is a soft delete; `expires_at` hides a notice from the
+  parent feed. An optional attachment is size- and type-limited and served through a short-lived
+  HMAC-signed URL (`app.notices`). Admins can turn a global notice into a calendar `HOLIDAY`.
 - Layered code: controller → service → repository, with DTOs and validation.
 - Secrets come from environment variables.
 

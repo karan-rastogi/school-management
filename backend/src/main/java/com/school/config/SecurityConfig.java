@@ -82,6 +82,8 @@ public class SecurityConfig {
                                 "/auth/otp/verify",
                                 "/auth/refresh",
                                 "/auth/logout").permitAll()
+                        // Signed-URL attachment downloads: the HMAC signature is the grant.
+                        .requestMatchers("/notices/attachments/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
