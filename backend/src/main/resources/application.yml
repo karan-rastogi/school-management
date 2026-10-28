@@ -57,6 +57,13 @@ management:
 
 app:
   timezone: ${APP_TIMEZONE:Asia/Kolkata}
+  attendance:
+    present-weight: ${ATTENDANCE_PRESENT_WEIGHT:1.0}
+    late-weight: ${ATTENDANCE_LATE_WEIGHT:1.0}
+    half-day-weight: ${ATTENDANCE_HALF_DAY_WEIGHT:0.5}
+    absent-weight: ${ATTENDANCE_ABSENT_WEIGHT:0.0}
+    excused-excluded-from-denominator: ${ATTENDANCE_EXCUSED_EXCLUDED:true}
+    warning-threshold-percent: ${ATTENDANCE_WARNING_THRESHOLD:75.0}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
     allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS

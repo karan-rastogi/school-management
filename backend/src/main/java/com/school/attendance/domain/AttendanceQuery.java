@@ -48,6 +48,9 @@ public class AttendanceQuery {
     @Column(name = "status", nullable = false, length = 20)
     private AttendanceQueryStatus status = AttendanceQueryStatus.OPEN;
 
+    @Column(name = "message", columnDefinition = "text")
+    private String message;
+
     @Column(name = "response", columnDefinition = "text")
     private String response;
 
