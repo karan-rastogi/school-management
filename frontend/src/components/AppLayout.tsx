@@ -27,6 +27,16 @@ export function AppLayout() {
               Attendance
             </NavLink>
           ) : null}
+          {user?.roles.some((role) => role === "TEACHER" || role === "ADMIN") ? (
+            <NavLink to="/queries" className={linkClass}>
+              Queries
+            </NavLink>
+          ) : null}
+          {user?.roles.includes("PARENT") ? (
+            <NavLink to="/parent" className={linkClass}>
+              My children
+            </NavLink>
+          ) : null}
           {user?.roles.includes("ADMIN") ? (
             <NavLink to="/admin" className={linkClass}>
               Admin

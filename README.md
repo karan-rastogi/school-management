@@ -108,6 +108,11 @@ cd frontend && npm run build          # dist/
 | `GET`  | `/me`                         | authenticated                   |
 | `POST` | `/me/active-role`             | authenticated                   |
 | `GET`  | `/admin/users`                | `ADMIN` only                    |
+| `GET`  | `/parent/children`            | `PARENT` only (own children)    |
+| `GET`  | `/parent/children/{id}/attendance` | `PARENT` only (own children) |
+| `POST` | `/parent/children/{id}/attendance-queries` | `PARENT` only (own children) |
+| `GET`  | `/attendance/queries`         | `ADMIN` / `TEACHER`             |
+| `POST` | `/attendance/queries/{id}/resolve` | `ADMIN` / `TEACHER`        |
 | —      | everything else               | authenticated                   |
 
 ```bash
@@ -276,6 +281,8 @@ never silently drift apart.
 | `V6__notices_and_otp_codes.sql`       | `notices`, `otp_codes`                                               |
 | `V7__refresh_tokens.sql`              | `refresh_tokens`                                                     |
 | `V8__refresh_token_active_role.sql`   | adds `refresh_tokens.active_role`                                    |
+| `V9__substitute_permissions.sql`      | `substitute_permissions`                                             |
+| `V10__attendance_query_message.sql`   | adds `attendance_queries.message`                                    |
 
 Conventions:
 
@@ -297,6 +304,14 @@ These are enforced/observed throughout the codebase:
 
 - **Authorization is server-side.** UI checks are never the gate.
 - **Attendance is daily** — one record per student per date.
+- **Attendance percentage** is `present-equivalent days / counted days`. The window runs
+  from `max(admission_date, academic-year start)` to today; a day is counted when it is a
+  working day (holidays excluded), attendance was actually taken, and the status is not
+  excluded from the denominator. `PRESENT` and `LATE` count as a full day, `HALF_DAY` as
+  half, `ABSENT` as nothing, and `EXCUSED` is removed from the denominator entirely. The
+  weights and the warning threshold live in one place — `app.attendance` in
+  `application.yml`, bound to `AttendancePolicy` — so a school can retune the rules without
+  a code change.
 - **Dates are school-local (`Asia/Kolkata`)** and stored as SQL `DATE`,
   never as UTC timestamps. A `Clock` bean bound to `app.timezone` is the
   single source of "now" for business logic.
@@ -313,11 +328,14 @@ cd backend  && mvn test          # unit, MockMvc slice, and PostgreSQL integrati
 cd frontend && npm run typecheck # tsc --noEmit
 ```
 
-`PersistenceMappingTest` starts a throwaway PostgreSQL container via
-Testcontainers, runs every Flyway migration, lets Hibernate validate all
-entities against the result, and asserts the key constraints (daily attendance
-uniqueness, the notice scope/class rule, database-generated QR tokens). It is
-skipped automatically when Docker is unavailable.
+The PostgreSQL integration tests (`AbstractPostgresTest` and its subclasses)
+run against a throwaway instance started via Testcontainers when Docker is
+available, and fall back to an embedded PostgreSQL otherwise — so they run on a
+plain `mvn test` without Docker. They are skipped only if neither can be
+started. `PersistenceMappingTest` runs every Flyway migration, lets Hibernate
+validate all entities against the result, and asserts the key constraints
+(daily attendance uniqueness, the notice scope/class rule, database-generated
+QR tokens).
 
 `AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
 attributes, `/me`, refresh rotation and reuse detection, logout, the role

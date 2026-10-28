@@ -1,5 +1,7 @@
 import { apiClient } from "./api";
 import type {
+  AttendanceQuery,
+  AttendanceQueryStatus,
   AttendanceRoster,
   AttendanceScanRequest,
   AttendanceScanResult,
@@ -61,4 +63,14 @@ export async function grantSubstitutePermission(
 
 export async function revokeSubstitutePermission(id: number): Promise<void> {
   await apiClient.delete(`/admin/substitute-permissions/${id}`);
+}
+
+export async function listAttendanceQueries(status?: AttendanceQueryStatus): Promise<AttendanceQuery[]> {
+  const response = await apiClient.get<AttendanceQuery[]>("/attendance/queries", { params: { status } });
+  return response.data;
+}
+
+export async function resolveAttendanceQuery(id: number, response: string): Promise<AttendanceQuery> {
+  const result = await apiClient.post<AttendanceQuery>(`/attendance/queries/${id}/resolve`, { response });
+  return result.data;
 }

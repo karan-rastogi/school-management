@@ -97,12 +97,19 @@ public class SchoolCalendarService {
         schoolCalendarRepository.findById(date).ifPresent(schoolCalendarRepository::delete);
     }
 
-    private Map<LocalDate, SchoolCalendarDayType> overridesBetween(LocalDate from, LocalDate to) {
+    /**
+     * The calendar overrides in {@code [from, to]}, keyed by date. Unlike the range endpoints this
+     * carries no length cap so callers can reuse the same working-day rules over a long window
+     * (for example a whole academic year) in a single query.
+     */
+    @Transactional(readOnly = true)
+    public Map<LocalDate, SchoolCalendarDayType> overridesBetween(LocalDate from, LocalDate to) {
         return schoolCalendarRepository.findByDateBetweenOrderByDateAsc(from, to).stream()
                 .collect(Collectors.toMap(SchoolCalendarEntry::getDate, SchoolCalendarEntry::getType));
     }
 
-    private static boolean isWorkingDay(LocalDate date, Map<LocalDate, SchoolCalendarDayType> overrides) {
+    /** Working-day test against a pre-loaded override map, so callers avoid a query per date. */
+    public static boolean isWorkingDay(LocalDate date, Map<LocalDate, SchoolCalendarDayType> overrides) {
         SchoolCalendarDayType type = overrides.get(date);
         return type == null ? isWorkingByDefault(date) : isWorking(type);
     }

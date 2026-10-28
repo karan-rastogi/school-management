@@ -324,3 +324,62 @@ export interface SubstitutePermission {
   reason?: string | null;
   grantedAt: string;
 }
+
+export interface ChildAttendanceDay {
+  date: string;
+  working: boolean;
+  calendarType?: SchoolCalendarDayType | null;
+  status?: AttendanceStatus | null;
+  counted: boolean;
+  future: boolean;
+}
+
+export interface ChildAbsence {
+  date: string;
+  status: AttendanceStatus;
+}
+
+export interface ChildAttendance {
+  studentId: number;
+  fullName: string;
+  admissionNo: string;
+  photoPath?: string | null;
+  classId?: number | null;
+  className?: string | null;
+  section?: string | null;
+  fromDate: string;
+  toDate: string;
+  month: string;
+  percentage: number;
+  presentEquivalentDays: number;
+  countedDays: number;
+  presentDays: number;
+  absentDays: number;
+  lateDays: number;
+  halfDays: number;
+  excusedDays: number;
+  warningThresholdPercent: number;
+  belowThreshold: boolean;
+  days: ChildAttendanceDay[];
+  absences: ChildAbsence[];
+}
+
+export type AttendanceQueryStatus = "OPEN" | "RESOLVED";
+
+export interface AttendanceQuery {
+  id: number;
+  studentId: number;
+  studentName?: string | null;
+  admissionNo?: string | null;
+  classId?: number | null;
+  className?: string | null;
+  section?: string | null;
+  attendanceDate: string;
+  attendanceStatus?: AttendanceStatus | null;
+  status: AttendanceQueryStatus;
+  message?: string | null;
+  response?: string | null;
+  createdAt: string;
+  respondedByName?: string | null;
+  respondedAt?: string | null;
+}
