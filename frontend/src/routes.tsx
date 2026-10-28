@@ -16,7 +16,9 @@ import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { NoticesPage } from "./pages/NoticesPage";
 import { ParentDashboardPage } from "./pages/ParentDashboardPage";
+import { ParentNoticesPage } from "./pages/ParentNoticesPage";
 import { TeacherAttendancePage } from "./pages/TeacherAttendancePage";
 import { TeacherQueriesPage } from "./pages/TeacherQueriesPage";
 
@@ -53,6 +55,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="PARENT">
             <ParentDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "parent/notices",
+        element: (
+          <ProtectedRoute requiredRole="PARENT">
+            <ParentNoticesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "notices",
+        element: (
+          <ProtectedRoute requiredRole={["ADMIN", "TEACHER"]}>
+            <NoticesPage />
           </ProtectedRoute>
         ),
       },

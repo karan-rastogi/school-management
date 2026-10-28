@@ -32,9 +32,19 @@ export function AppLayout() {
               Queries
             </NavLink>
           ) : null}
+          {user?.roles.some((role) => role === "TEACHER" || role === "ADMIN") ? (
+            <NavLink to="/notices" className={linkClass}>
+              Notices
+            </NavLink>
+          ) : null}
           {user?.roles.includes("PARENT") ? (
             <NavLink to="/parent" className={linkClass}>
               My children
+            </NavLink>
+          ) : null}
+          {user?.roles.includes("PARENT") ? (
+            <NavLink to="/parent/notices" className={linkClass}>
+              Notices
             </NavLink>
           ) : null}
           {user?.roles.includes("ADMIN") ? (

@@ -8,6 +8,8 @@ import com.school.attendance.web.dto.ChildAttendanceResponse;
 import com.school.auth.security.AuthenticatedUser;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
+import com.school.notice.service.NoticeService;
+import com.school.notice.web.dto.NoticeResponse;
 import com.school.parent.service.ParentAccessService;
 import com.school.student.domain.Student;
 import com.school.student.service.ParentStudentLinkService;
@@ -42,17 +44,20 @@ public class ParentController {
     private final ParentAccessService parentAccessService;
     private final AttendanceSummaryService attendanceSummaryService;
     private final AttendanceQueryService attendanceQueryService;
+    private final NoticeService noticeService;
 
     public ParentController(
             ParentStudentLinkService parentStudentLinkService,
             ParentAccessService parentAccessService,
             AttendanceSummaryService attendanceSummaryService,
-            AttendanceQueryService attendanceQueryService
+            AttendanceQueryService attendanceQueryService,
+            NoticeService noticeService
     ) {
         this.parentStudentLinkService = parentStudentLinkService;
         this.parentAccessService = parentAccessService;
         this.attendanceSummaryService = attendanceSummaryService;
         this.attendanceQueryService = attendanceQueryService;
+        this.noticeService = noticeService;
     }
 
     @GetMapping("/children")
@@ -79,6 +84,11 @@ public class ParentController {
     ) {
         parentAccessService.requireChild(user.id(), studentId);
         return attendanceQueryService.raise(studentId, user.id(), request.date(), request.message());
+    }
+
+    @GetMapping("/notices")
+    public List<NoticeResponse> notices(@AuthenticationPrincipal AuthenticatedUser user) {
+        return noticeService.parentFeed(user);
     }
 
     private static YearMonth parseMonth(String month) {

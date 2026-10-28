@@ -383,3 +383,59 @@ export interface AttendanceQuery {
   respondedByName?: string | null;
   respondedAt?: string | null;
 }
+
+export type NoticeScope = "GLOBAL" | "CLASS";
+
+export interface NoticeAttachment {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAt?: string | null;
+  url: string;
+}
+
+export interface Notice {
+  id: number;
+  title: string;
+  body: string;
+  scope: NoticeScope;
+  classId?: number | null;
+  className?: string | null;
+  section?: string | null;
+  classLabel?: string | null;
+  senderUserId?: number | null;
+  senderName?: string | null;
+  senderLabel: string;
+  createdAt: string;
+  editedAt?: string | null;
+  edited: boolean;
+  expiresAt?: string | null;
+  expired: boolean;
+  childName?: string | null;
+  attachment?: NoticeAttachment | null;
+}
+
+export interface NoticeInput {
+  title: string;
+  body: string;
+  scope: NoticeScope;
+  classId?: number | null;
+  expiresAt?: string | null;
+  senderLabel?: string | null;
+}
+
+export interface NoticeUpdateInput {
+  title: string;
+  body: string;
+  expiresAt?: string | null;
+  clearExpiry?: boolean;
+  removeAttachment?: boolean;
+}
+
+export interface AssignableClass {
+  classId: number;
+  className: string;
+  section: string;
+  academicYearName: string;
+  senderLabel: string;
+}

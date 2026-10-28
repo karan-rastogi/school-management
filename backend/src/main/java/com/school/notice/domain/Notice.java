@@ -65,4 +65,19 @@ public class Notice {
 
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
+
+    @Column(name = "attachment_key", length = 255)
+    private String attachmentKey;
+
+    @Column(name = "attachment_file_name", length = 255)
+    private String attachmentFileName;
+
+    @Column(name = "attachment_content_type", length = 150)
+    private String attachmentContentType;
+
+    @Column(name = "attachment_size_bytes")
+    private Long attachmentSizeBytes;
+
+    @Column(name = "attachment_uploaded_at")
+    private OffsetDateTime attachmentUploadedAt;
 }

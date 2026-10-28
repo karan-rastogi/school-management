@@ -39,4 +39,25 @@ public interface TeacherAssignmentRepository
               and a.active = true
             """)
     List<TeacherAssignment> findActiveClassTeacherAssignments(@Param("teacherUserId") Long teacherUserId);
+
+    @Query("""
+            select a from TeacherAssignment a
+            join fetch a.schoolClass c
+            join fetch c.academicYear
+            where a.teacher.id = :teacherUserId
+              and a.active = true
+            order by c.name, c.section, a.id
+            """)
+    List<TeacherAssignment> findActiveAssignmentsForTeacher(@Param("teacherUserId") Long teacherUserId);
+
+    @Query("""
+            select a from TeacherAssignment a
+            where a.teacher.id = :teacherUserId
+              and a.schoolClass.id = :classId
+              and a.active = true
+            order by a.classTeacher desc, a.id asc
+            """)
+    List<TeacherAssignment> findActiveAssignmentsForClass(
+            @Param("teacherUserId") Long teacherUserId,
+            @Param("classId") Long classId);
 }
