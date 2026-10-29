@@ -359,22 +359,42 @@ These are enforced/observed throughout the codebase:
 ## Tests
 
 ```bash
-cd backend  && mvn test          # unit, MockMvc slice, and PostgreSQL integration tests
-cd frontend && npm run typecheck # tsc --noEmit
+cd backend  && ./mvnw test          # unit, MockMvc slice, and PostgreSQL integration tests
+cd frontend && npm run typecheck    # tsc --noEmit
 ```
+
+The Maven wrapper (`backend/mvnw`, `backend/mvnw.cmd`) pins Maven 3.9.16, so no
+local Maven install is required. On Windows `cmd.exe` run `mvnw test` instead of
+`./mvnw test`.
 
 The PostgreSQL integration tests (`AbstractPostgresTest` and its subclasses)
 run against a throwaway instance started via Testcontainers when Docker is
 available, and fall back to an embedded PostgreSQL otherwise — so they run on a
-plain `mvn test` without Docker. They are skipped only if neither can be
+plain `./mvnw test` without Docker. They are skipped only if neither can be
 started. `PersistenceMappingTest` runs every Flyway migration, lets Hibernate
 validate all entities against the result, and asserts the key constraints
 (daily attendance uniqueness, the notice scope/class rule, database-generated
 QR tokens).
 
-`AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
-attributes, `/me`, refresh rotation and reuse detection, logout, the role
-switcher, and the admin-only endpoint. `OtpServiceTest` covers the OTP rules in
-isolation (hashing, expiry, the five-attempt ceiling, single use, and the per-phone
-and per-client-address rate limits), and `OAuth2LoginSuccessHandlerTest` covers
-the "no auto-signup" rejection paths.
+The main flows are covered end-to-end (real Spring context + PostgreSQL):
+
+- `AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
+  attributes, `/me`, refresh rotation and reuse detection, logout, the role
+  switcher, and the admin-only endpoint.
+- `OtpLoginIntegrationTest` covers the OTP expiry and the five-attempt ceiling
+  against the real `otp_codes` table.
+- `OAuth2LoginIntegrationTest` covers the Google rules: an unregistered address
+  is rejected with no account created, a deactivated account is refused, and a
+  pre-registered active account gets a session cookie.
+- `AttendanceApiIntegrationTest` covers QR scanning (own class ok, other class
+  warning, duplicate scan idempotent) and the paper-backfill window (allowed up
+  to three days for a teacher, admin only beyond that).
+- `ParentAttendanceApiIntegrationTest` covers a parent reading their own child
+  and the IDOR guard (403 for another parent's child), plus the attendance
+  percentage with holidays, half days and unmarked days.
+- `NoticeApiIntegrationTest` covers staff notice scoping, including a teacher
+  being unable to post to a class they do not teach.
+
+`OtpServiceTest` and `OAuth2LoginSuccessHandlerTest` additionally cover the same
+login rules in isolation (hashing, single use, per-phone and per-client-address
+rate limits, "no auto-signup").
