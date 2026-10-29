@@ -92,9 +92,21 @@ over CORS, so `CORS_ALLOWED_ORIGINS` must contain the dev-server origin.
 ### Production build
 
 ```bash
-cd backend  && mvn clean package      # target/school-management-backend-0.0.1-SNAPSHOT.jar
+cd backend  && ./mvnw clean package   # target/school-management-backend-0.0.1-SNAPSHOT.jar
 cd frontend && npm run build          # dist/
 ```
+
+The backend also ships a `backend/Dockerfile` (multi-stage, Java 21 JRE, non-root, honours `PORT`).
+Deploying:
+
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** — step-by-step manual deployment (Postgres on Neon/Supabase,
+  backend on Render/Fly.io, frontend on Vercel), smoke tests and rollback.
+- **[ENVIRONMENT.md](./ENVIRONMENT.md)** — every environment variable, with purpose and example.
+
+Set `SPRING_PROFILES_ACTIVE=prod` in a deployed environment to load
+`backend/src/main/resources/application-prod.yml`: configuration comes from environment variables,
+secrets have no defaults, Flyway migrates on startup, JPA runs `ddl-auto=validate`, and
+`server.forward-headers-strategy=framework`.
 
 ## Endpoints
 
