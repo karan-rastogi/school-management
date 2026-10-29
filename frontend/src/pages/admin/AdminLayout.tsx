@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const LINKS = [
   { to: "/admin/students", label: "Students" },
   { to: "/admin/import", label: "Import CSV" },
+  { to: "/admin/id-cards", label: "ID cards" },
   { to: "/admin/academic-years", label: "Academic years" },
   { to: "/admin/classes", label: "Classes" },
   { to: "/admin/calendar", label: "Calendar" },
