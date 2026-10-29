@@ -14,6 +14,7 @@ import {
   TextInput,
 } from "../../components/ui";
 import * as adminApi from "../../lib/adminApi";
+import { saveBlob } from "../../lib/download";
 import type { EnrollmentInput } from "../../types/api";
 
 const EMPTY_ENROLLMENT: EnrollmentInput = { classId: null, rollNo: null, fromDate: "", toDate: "" };
@@ -52,6 +53,11 @@ export function StudentDetailPage() {
   const resetQr = useMutation({
     mutationFn: () => adminApi.regenerateQrToken(id),
     onSuccess: invalidate,
+  });
+
+  const downloadIdCard = useMutation({
+    mutationFn: () => adminApi.downloadStudentIdCard(id),
+    onSuccess: (blob) => saveBlob(blob, `${detail.data?.admissionNo ?? "student"}-id-card.pdf`),
   });
 
   const addEnrollment = useMutation({
@@ -113,9 +119,20 @@ export function StudentDetailPage() {
         title={student.fullName}
         description={`Admission no ${student.admissionNo}`}
         actions={
-          student.status === "ACTIVE" ? <Badge tone="green">Active</Badge> : <Badge>Left</Badge>
+          <>
+            <Button
+              variant="secondary"
+              disabled={downloadIdCard.isPending}
+              onClick={() => downloadIdCard.mutate()}
+            >
+              {downloadIdCard.isPending ? "Preparing…" : "Download ID card"}
+            </Button>
+            {student.status === "ACTIVE" ? <Badge tone="green">Active</Badge> : <Badge>Left</Badge>}
+          </>
         }
       />
+
+      {downloadIdCard.isError ? <ErrorBanner error={downloadIdCard.error} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-4">

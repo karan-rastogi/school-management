@@ -210,6 +210,22 @@ export async function regenerateQrToken(id: number): Promise<string> {
   return response.data.qrToken;
 }
 
+/* ID cards */
+
+export async function downloadStudentIdCard(studentId: number): Promise<Blob> {
+  const response = await apiClient.get<Blob>(`/admin/id-cards/students/${studentId}`, {
+    responseType: "blob",
+  });
+  return response.data;
+}
+
+export async function downloadClassIdCards(classId: number): Promise<Blob> {
+  const response = await apiClient.get<Blob>(`/admin/id-cards/classes/${classId}`, {
+    responseType: "blob",
+  });
+  return response.data;
+}
+
 export async function enrollStudent(studentId: number, input: EnrollmentInput): Promise<Enrollment> {
   const response = await apiClient.post<Enrollment>(`/admin/students/${studentId}/enrollments`, {
     classId: input.classId,

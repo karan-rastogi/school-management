@@ -5,6 +5,7 @@ import { AcademicYearsPage } from "./pages/admin/AcademicYearsPage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { CalendarPage } from "./pages/admin/CalendarPage";
 import { ClassesPage } from "./pages/admin/ClassesPage";
+import { IdCardsPage } from "./pages/admin/IdCardsPage";
 import { ParentLinksPage } from "./pages/admin/ParentLinksPage";
 import { StudentDetailPage } from "./pages/admin/StudentDetailPage";
 import { StudentImportPage } from "./pages/admin/StudentImportPage";
@@ -86,6 +87,7 @@ export const router = createBrowserRouter([
           { path: "students", element: <StudentsPage /> },
           { path: "students/:studentId", element: <StudentDetailPage /> },
           { path: "import", element: <StudentImportPage /> },
+          { path: "id-cards", element: <IdCardsPage /> },
           { path: "academic-years", element: <AcademicYearsPage /> },
           { path: "classes", element: <ClassesPage /> },
           { path: "calendar", element: <CalendarPage /> },

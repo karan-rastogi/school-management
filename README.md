@@ -48,6 +48,8 @@ take precedence over the `.env` file.
 | `DB_POOL_MAX_SIZE` / `DB_POOL_MIN_IDLE` | `10` / `2`                         | backend        |
 | `APP_TIMEZONE`                    | `Asia/Kolkata`                           | backend        |
 | `CORS_ALLOWED_ORIGINS`            | `http://localhost:5173`                  | backend        |
+| `ID_CARD_SCHOOL_NAME`             | `School`                                 | backend        |
+| `ID_CARD_PHOTO_DIR`               | `./uploads/photos`                       | backend        |
 | `VITE_API_BASE_URL`               | `http://localhost:8080`                  | frontend       |
 
 > The default host port for PostgreSQL is **5433**, because `5432` is commonly
@@ -108,6 +110,8 @@ cd frontend && npm run build          # dist/
 | `GET`  | `/me`                         | authenticated                   |
 | `POST` | `/me/active-role`             | authenticated                   |
 | `GET`  | `/admin/users`                | `ADMIN` only                    |
+| `GET`  | `/admin/id-cards/students/{id}` | `ADMIN` only (single ID card PDF) |
+| `GET`  | `/admin/id-cards/classes/{id}`  | `ADMIN` only (whole-class ID card sheet PDF) |
 | `GET`  | `/parent/children`            | `PARENT` only (own children)    |
 | `GET`  | `/parent/children/{id}/attendance` | `PARENT` only (own children) |
 | `POST` | `/parent/children/{id}/attendance-queries` | `PARENT` only (own children) |
@@ -328,6 +332,13 @@ These are enforced/observed throughout the codebase:
 - **Every attendance change** is written to an audit log (who, when, old
   value, new value).
 - **No personal data** in URLs, logs or QR codes.
+- **Student ID cards** are generated server-side as PDFs (OpenPDF), with QR codes drawn by ZXing.
+  A card shows the student's photo, name and class; the QR encodes **only** the opaque
+  `students.qr_token`, so a printed code carries no personal data. Admins print a single card
+  (`GET /admin/id-cards/students/{id}`) or a whole class as an A4 sheet of cards
+  (`GET /admin/id-cards/classes/{id}`), laid out with the `app.id-cards` grid. Photos are read from
+  local paths (absolute, or relative to `app.id-cards.photo-directory`); anything unreadable falls
+  back to an initials placeholder.
 - **Notices** are `GLOBAL` or class-scoped. Admins post global notices; a teacher may only post a
   class notice to a class they are assigned to, and the `sender_label` is frozen from that
   assignment at send time (e.g. `Maths Teacher - Mrs Sharma`). Parents see global notices plus
