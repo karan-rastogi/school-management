@@ -3,6 +3,7 @@ package com.school.academic.service;
 import com.school.academic.domain.AcademicYear;
 import com.school.academic.repository.AcademicYearRepository;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.academic.web.dto.AcademicYearRequest;
 import com.school.academic.web.dto.AcademicYearResponse;
 import com.school.common.error.ApiException;
@@ -21,13 +22,16 @@ public class AcademicYearService {
 
     private final AcademicYearRepository academicYearRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public AcademicYearService(
             AcademicYearRepository academicYearRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.academicYearRepository = academicYearRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +69,9 @@ public class AcademicYearService {
 
         AcademicYear academicYear = new AcademicYear();
         apply(academicYear, request, name);
-        return toResponse(academicYearRepository.saveAndFlush(academicYear));
+        AcademicYear saved = academicYearRepository.saveAndFlush(academicYear);
+        auditService.record("ACADEMIC_YEAR_CREATED", "ACADEMIC_YEAR", saved.getId());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -82,7 +88,9 @@ public class AcademicYearService {
         }
 
         apply(academicYear, request, name);
-        return toResponse(academicYearRepository.saveAndFlush(academicYear));
+        AcademicYear saved = academicYearRepository.saveAndFlush(academicYear);
+        auditService.record("ACADEMIC_YEAR_UPDATED", "ACADEMIC_YEAR", saved.getId());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -92,6 +100,7 @@ public class AcademicYearService {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.CONFLICT,
                     "This academic year still has classes. Remove those classes first.");
         }
+        auditService.record("ACADEMIC_YEAR_DELETED", "ACADEMIC_YEAR", id);
         academicYearRepository.delete(academicYear);
     }
 

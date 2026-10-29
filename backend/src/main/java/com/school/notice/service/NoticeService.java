@@ -2,6 +2,7 @@ package com.school.notice.service;
 
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.auth.security.AuthenticatedUser;
 import com.school.calendar.domain.SchoolCalendarDayType;
 import com.school.calendar.service.SchoolCalendarService;
@@ -59,6 +60,7 @@ public class NoticeService {
     private final NoticeAttachmentStore attachmentStore;
     private final NoticeAttachmentSigner attachmentSigner;
     private final UserRepository userRepository;
+    private final AuditService auditService;
     private final Clock clock;
 
     public NoticeService(
@@ -72,6 +74,7 @@ public class NoticeService {
             NoticeAttachmentStore attachmentStore,
             NoticeAttachmentSigner attachmentSigner,
             UserRepository userRepository,
+            AuditService auditService,
             Clock clock
     ) {
         this.noticeRepository = noticeRepository;
@@ -84,6 +87,7 @@ public class NoticeService {
         this.attachmentStore = attachmentStore;
         this.attachmentSigner = attachmentSigner;
         this.userRepository = userRepository;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -115,7 +119,9 @@ public class NoticeService {
         notice.setSenderLabel(senderLabel);
         notice.setExpiresAt(futureExpiryOrNull(request.expiresAt()));
 
-        return toResponse(noticeRepository.saveAndFlush(notice), null);
+        Notice saved = noticeRepository.saveAndFlush(notice);
+        auditService.record("NOTICE_CREATED", "NOTICE", saved.getId(), "scope=" + saved.getScope());
+        return toResponse(saved, null);
     }
 
     @Transactional
@@ -136,7 +142,9 @@ public class NoticeService {
         }
         notice.setEditedAt(OffsetDateTime.now(clock));
 
-        return toResponse(noticeRepository.saveAndFlush(notice), null);
+        Notice saved = noticeRepository.saveAndFlush(notice);
+        auditService.record("NOTICE_UPDATED", "NOTICE", id);
+        return toResponse(saved, null);
     }
 
     @Transactional
@@ -145,6 +153,7 @@ public class NoticeService {
         requireCanManage(actor, notice);
         notice.setDeletedAt(OffsetDateTime.now(clock));
         noticeRepository.saveAndFlush(notice);
+        auditService.record("NOTICE_DELETED", "NOTICE", id);
     }
 
     @Transactional
@@ -161,7 +170,9 @@ public class NoticeService {
         notice.setAttachmentSizeBytes(stored.sizeBytes());
         notice.setAttachmentUploadedAt(OffsetDateTime.now(clock));
 
-        return toResponse(noticeRepository.saveAndFlush(notice), null);
+        Notice saved = noticeRepository.saveAndFlush(notice);
+        auditService.record("NOTICE_ATTACHMENT_ADDED", "NOTICE", id);
+        return toResponse(saved, null);
     }
 
     @Transactional
@@ -171,6 +182,7 @@ public class NoticeService {
         attachmentStore.delete(notice.getAttachmentKey());
         clearAttachment(notice);
         noticeRepository.saveAndFlush(notice);
+        auditService.record("NOTICE_ATTACHMENT_REMOVED", "NOTICE", id);
     }
 
     @Transactional(readOnly = true)
@@ -257,6 +269,7 @@ public class NoticeService {
         String description = request.description() == null || request.description().isBlank()
                 ? notice.getTitle()
                 : request.description().trim();
+        auditService.record("NOTICE_HOLIDAY_CREATED", "NOTICE", noticeId, "date=" + request.date());
         return schoolCalendarService.mark(request.date(), new CalendarEntryRequest(SchoolCalendarDayType.HOLIDAY, description));
     }
 

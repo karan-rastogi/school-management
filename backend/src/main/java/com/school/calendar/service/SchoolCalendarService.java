@@ -2,6 +2,7 @@ package com.school.calendar.service;
 
 import com.school.calendar.domain.SchoolCalendarDayType;
 import com.school.calendar.domain.SchoolCalendarEntry;
+import com.school.audit.service.AuditService;
 import com.school.calendar.repository.SchoolCalendarRepository;
 import com.school.calendar.web.dto.CalendarDayResponse;
 import com.school.calendar.web.dto.CalendarEntryRequest;
@@ -34,9 +35,11 @@ public class SchoolCalendarService {
     private static final long MAX_RANGE_DAYS = 366;
 
     private final SchoolCalendarRepository schoolCalendarRepository;
+    private final AuditService auditService;
 
-    public SchoolCalendarService(SchoolCalendarRepository schoolCalendarRepository) {
+    public SchoolCalendarService(SchoolCalendarRepository schoolCalendarRepository, AuditService auditService) {
         this.schoolCalendarRepository = schoolCalendarRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -89,12 +92,17 @@ public class SchoolCalendarService {
 
         entry.setType(request.type());
         entry.setDescription(blankToNull(request.description()));
-        return toResponse(date, schoolCalendarRepository.saveAndFlush(entry));
+        CalendarDayResponse response = toResponse(date, schoolCalendarRepository.saveAndFlush(entry));
+        auditService.record("CALENDAR_MARKED", "CALENDAR", date, "type=" + request.type());
+        return response;
     }
 
     @Transactional
     public void clear(LocalDate date) {
-        schoolCalendarRepository.findById(date).ifPresent(schoolCalendarRepository::delete);
+        schoolCalendarRepository.findById(date).ifPresent(entry -> {
+            schoolCalendarRepository.delete(entry);
+            auditService.record("CALENDAR_CLEARED", "CALENDAR", date);
+        });
     }
 
     /**

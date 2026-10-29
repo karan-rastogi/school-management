@@ -126,7 +126,11 @@ cd frontend && npm run build          # dist/
 | `POST` | `/notices/{id}/holiday`       | `ADMIN` only                    |
 | `GET`  | `/notices/attachments/{id}`   | public (valid signed URL)       |
 | `GET`  | `/parent/notices`             | `PARENT` only                   |
-| —      | everything else               | authenticated                   |
+| —      | everything else               | denied (default-deny allow-list) |
+
+The filter chain only exposes the paths above; every other path is denied by default
+(`anyRequest().denyAll()`), so a new endpoint must be added here deliberately and given a role
+check on its controller before it is reachable.
 
 ```bash
 curl http://localhost:8080/api/health
@@ -231,14 +235,16 @@ RETURNING id;
 INSERT INTO user_roles (user_id, role) VALUES (<id>, 'ADMIN');
 ```
 
-With `OTP_SENDER=console` the code is printed to the backend log:
+With `OTP_SENDER=console` the backend logs that a code was sent, with the phone masked and the
+code itself **not** written to the log (logs must not carry credentials):
 
 ```
-OTP (dev console sender) for ****3210 is 483920 and is valid for 5 minutes.
+OTP (dev console sender) sent a code for ****3210 valid for 5 minutes. ...
 ```
 
-The phone is masked in logs; set `OTP_SENDER=sms` to route through an SMS provider
-(the bundled `SmsOtpSender` is a stub and returns `501 NOT_IMPLEMENTED` until one
+To read the code from the console during development, set
+`OTP_CONSOLE_EXPOSE_CODE=true` (never in production). Set `OTP_SENDER=sms` to route through an
+SMS provider (the bundled `SmsOtpSender` is a stub and returns `501 NOT_IMPLEMENTED` until one
 is wired up).
 
 ## Error format
@@ -297,6 +303,7 @@ never silently drift apart.
 | `V9__substitute_permissions.sql`      | `substitute_permissions`                                             |
 | `V10__attendance_query_message.sql`   | adds `attendance_queries.message`                                    |
 | `V11__notice_attachments.sql`         | adds notice attachment columns                                       |
+| `V12__audit_log.sql`                  | `audit_log` (role changes, QR-token regeneration, notice/admin actions) |
 
 Conventions:
 

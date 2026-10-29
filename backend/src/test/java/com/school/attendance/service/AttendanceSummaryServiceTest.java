@@ -4,6 +4,7 @@ import com.school.academic.domain.AcademicYear;
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.AcademicYearRepository;
 import com.school.attendance.config.AttendancePolicy;
+import com.school.audit.service.AuditService;
 import com.school.attendance.domain.Attendance;
 import com.school.attendance.domain.AttendanceSource;
 import com.school.attendance.domain.AttendanceStatus;
@@ -45,7 +46,8 @@ class AttendanceSummaryServiceTest {
     private final SchoolCalendarRepository schoolCalendarRepository = mock(SchoolCalendarRepository.class);
 
     private final Clock clock = Clock.fixed(TODAY.atStartOfDay(ZONE).toInstant(), ZONE);
-    private final SchoolCalendarService schoolCalendarService = new SchoolCalendarService(schoolCalendarRepository);
+    private final SchoolCalendarService schoolCalendarService =
+            new SchoolCalendarService(schoolCalendarRepository, mock(AuditService.class));
 
     @Test
     void weightsLateAsPresentHalfDayAsHalfAndDropsExcusedAndHolidays() {

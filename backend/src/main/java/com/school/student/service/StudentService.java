@@ -2,6 +2,7 @@ package com.school.student.service;
 
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
 import com.school.common.web.PageResponse;
@@ -52,19 +53,22 @@ public class StudentService {
     private final ParentStudentLinkRepository parentStudentLinkRepository;
     private final UserRepository userRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public StudentService(
             StudentRepository studentRepository,
             StudentEnrollmentRepository studentEnrollmentRepository,
             ParentStudentLinkRepository parentStudentLinkRepository,
             UserRepository userRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.studentRepository = studentRepository;
         this.studentEnrollmentRepository = studentEnrollmentRepository;
         this.parentStudentLinkRepository = parentStudentLinkRepository;
         this.userRepository = userRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -96,6 +100,7 @@ public class StudentService {
         apply(student, request, admissionNo);
 
         Student saved = studentRepository.saveAndFlush(student);
+        auditService.record("STUDENT_CREATED", "STUDENT", saved.getId());
         return toResponse(saved, null);
     }
 
@@ -111,6 +116,7 @@ public class StudentService {
         apply(student, request, admissionNo);
 
         Student saved = studentRepository.saveAndFlush(student);
+        auditService.record("STUDENT_UPDATED", "STUDENT", saved.getId());
         return toResponse(saved, openEnrollments(List.of(saved)).get(saved.getId()));
     }
 
@@ -120,6 +126,7 @@ public class StudentService {
         studentRepository.regenerateQrToken(id);
         Student refreshed = find(id);
         log.info("Regenerated the QR token for student id {}", id);
+        auditService.record("QR_TOKEN_REGENERATED", "STUDENT", id);
         return new QrTokenResponse(refreshed.getQrToken());
     }
 
@@ -160,7 +167,10 @@ public class StudentService {
         enrollment.setFromDate(from);
         enrollment.setToDate(to);
 
-        return toEnrollment(studentEnrollmentRepository.saveAndFlush(enrollment));
+        StudentEnrollment saved = studentEnrollmentRepository.saveAndFlush(enrollment);
+        auditService.record("ENROLLMENT_CREATED", "STUDENT", studentId,
+                "enrollmentId=" + saved.getId() + " classId=" + schoolClass.getId());
+        return toEnrollment(saved);
     }
 
     @Transactional
@@ -170,6 +180,7 @@ public class StudentService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND,
                         "Enrollment not found for this student."));
         studentEnrollmentRepository.delete(enrollment);
+        auditService.record("ENROLLMENT_REMOVED", "STUDENT", studentId, "enrollmentId=" + enrollmentId);
     }
 
     private void apply(Student student, StudentRequest request, String admissionNo) {

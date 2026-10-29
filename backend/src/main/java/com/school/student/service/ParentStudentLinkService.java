@@ -1,5 +1,6 @@
 package com.school.student.service;
 
+import com.school.audit.service.AuditService;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
 import com.school.student.domain.ParentStudentLink;
@@ -32,19 +33,22 @@ public class ParentStudentLinkService {
     private final StudentEnrollmentRepository studentEnrollmentRepository;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final AuditService auditService;
 
     public ParentStudentLinkService(
             ParentStudentLinkRepository parentStudentLinkRepository,
             StudentRepository studentRepository,
             StudentEnrollmentRepository studentEnrollmentRepository,
             UserRepository userRepository,
-            UserRoleRepository userRoleRepository
+            UserRoleRepository userRoleRepository,
+            AuditService auditService
     ) {
         this.parentStudentLinkRepository = parentStudentLinkRepository;
         this.studentRepository = studentRepository;
         this.studentEnrollmentRepository = studentEnrollmentRepository;
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -114,6 +118,7 @@ public class ParentStudentLinkService {
         link.setStudentId(student.getId());
         link.setRelationship(blankToNull(request.relationship()));
         parentStudentLinkRepository.saveAndFlush(link);
+        auditService.record("PARENT_LINK_CREATED", "STUDENT", student.getId(), "parentUserId=" + parent.getId());
 
         return new StudentParentResponse(parent.getId(), parent.getName(), parent.getPhone(), parent.getEmail(),
                 link.getRelationship());
@@ -126,6 +131,7 @@ public class ParentStudentLinkService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND,
                         "That parent is not linked to that student."));
         parentStudentLinkRepository.delete(link);
+        auditService.record("PARENT_LINK_REMOVED", "STUDENT", studentId, "parentUserId=" + parentUserId);
     }
 
     private User requireParent(Long parentUserId) {

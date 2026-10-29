@@ -1,5 +1,6 @@
 package com.school.calendar.service;
 
+import com.school.audit.service.AuditService;
 import com.school.calendar.domain.SchoolCalendarDayType;
 import com.school.calendar.domain.SchoolCalendarEntry;
 import com.school.calendar.repository.SchoolCalendarRepository;
@@ -32,7 +33,7 @@ class SchoolCalendarServiceTest {
     @BeforeEach
     void setUp() {
         schoolCalendarRepository = mock(SchoolCalendarRepository.class);
-        schoolCalendarService = new SchoolCalendarService(schoolCalendarRepository);
+        schoolCalendarService = new SchoolCalendarService(schoolCalendarRepository, mock(AuditService.class));
         when(schoolCalendarRepository.findById(any())).thenReturn(Optional.empty());
         when(schoolCalendarRepository.findByDateBetweenOrderByDateAsc(any(), any())).thenReturn(List.of());
     }

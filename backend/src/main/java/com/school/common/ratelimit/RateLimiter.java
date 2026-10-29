@@ -1,4 +1,4 @@
-package com.school.auth.otp;
+package com.school.common.ratelimit;
 
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
@@ -10,8 +10,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A simple fixed-window, in-memory rate limiter keyed by an arbitrary string (phone, client
+ * address, endpoint, ...). Each {@link #check} call counts one attempt for the key and throws
+ * {@link ApiException} with {@code 429 RATE_LIMITED} once the limit within the window is exceeded.
+ */
 @Component
-public class OtpRateLimiter {
+public class RateLimiter {
 
     private static final int MAX_TRACKED_KEYS = 10_000;
     private static final Duration EVICTION_WINDOW = Duration.ofHours(1);
@@ -19,7 +24,7 @@ public class OtpRateLimiter {
     private final ConcurrentHashMap<String, Counter> counters = new ConcurrentHashMap<>();
     private final Clock clock;
 
-    public OtpRateLimiter(Clock clock) {
+    public RateLimiter(Clock clock) {
         this.clock = clock;
     }
 

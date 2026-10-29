@@ -1,5 +1,6 @@
 package com.school.user.service;
 
+import com.school.audit.service.AuditService;
 import com.school.auth.service.PhoneNumbers;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
@@ -36,10 +37,16 @@ public class UserAdminService {
 
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final AuditService auditService;
 
-    public UserAdminService(UserRepository userRepository, UserRoleRepository userRoleRepository) {
+    public UserAdminService(
+            UserRepository userRepository,
+            UserRoleRepository userRoleRepository,
+            AuditService auditService
+    ) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +88,7 @@ public class UserAdminService {
 
         User saved = userRepository.saveAndFlush(user);
         replaceRoles(saved.getId(), request.roles());
+        auditService.record("USER_CREATED", "USER", saved.getId());
         return toResponse(saved, rolesOf(saved.getId()));
     }
 
@@ -100,6 +108,7 @@ public class UserAdminService {
         requireUniqueContact(user, id);
 
         User saved = userRepository.saveAndFlush(user);
+        auditService.record("USER_UPDATED", "USER", id);
         return toResponse(saved, rolesOf(id));
     }
 
@@ -111,6 +120,7 @@ public class UserAdminService {
                     "A user needs at least one role, otherwise they cannot sign in.");
         }
 
+        Set<Role> previous = rolesOf(id);
         userRoleRepository.deleteAll(userRoleRepository.findByUserId(id));
 
         Set<Role> ordered = new LinkedHashSet<>(EnumSet.copyOf(roles));
@@ -122,12 +132,16 @@ public class UserAdminService {
         }
         userRoleRepository.flush();
 
+        auditService.record("USER_ROLES_CHANGED", "USER", id,
+                "from=" + previous + " to=" + ordered);
         return toResponse(user, rolesOf(id));
     }
 
     @Transactional
     public void delete(Long id) {
         User user = find(id);
+        // Record before the row disappears so the acting user still satisfies the audit FK.
+        auditService.record("USER_DELETED", "USER", id);
         userRoleRepository.deleteAll(userRoleRepository.findByUserId(id));
         userRepository.delete(user);
     }

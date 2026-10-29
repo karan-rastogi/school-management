@@ -2,6 +2,7 @@ package com.school.teacher.service;
 
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.auth.security.AuthenticatedUser;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
@@ -26,17 +27,20 @@ public class SubstitutePermissionService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public SubstitutePermissionService(
             SubstitutePermissionRepository substitutePermissionRepository,
             UserRepository userRepository,
             UserRoleRepository userRoleRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.substitutePermissionRepository = substitutePermissionRepository;
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -61,7 +65,10 @@ public class SubstitutePermissionService {
         permission.setValidUntil(request.validUntil());
         permission.setReason(blankToNull(request.reason()));
 
-        return toResponse(substitutePermissionRepository.saveAndFlush(permission));
+        SubstitutePermission saved = substitutePermissionRepository.saveAndFlush(permission);
+        auditService.record("SUBSTITUTE_PERMISSION_CREATED", "SUBSTITUTE_PERMISSION", saved.getId(),
+                "classId=" + schoolClass.getId() + " teacherUserId=" + teacher.getId());
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -77,6 +84,7 @@ public class SubstitutePermissionService {
         SubstitutePermission permission = substitutePermissionRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND,
                         "Substitute permission not found."));
+        auditService.record("SUBSTITUTE_PERMISSION_DELETED", "SUBSTITUTE_PERMISSION", id);
         substitutePermissionRepository.delete(permission);
     }
 

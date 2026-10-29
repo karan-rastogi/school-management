@@ -2,6 +2,7 @@ package com.school.student.service;
 
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.auth.service.PhoneNumbers;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
@@ -53,6 +54,7 @@ public class StudentImportService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public StudentImportService(
             StudentRepository studentRepository,
@@ -60,7 +62,8 @@ public class StudentImportService {
             ParentStudentLinkRepository parentStudentLinkRepository,
             UserRepository userRepository,
             UserRoleRepository userRoleRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.studentRepository = studentRepository;
         this.studentEnrollmentRepository = studentEnrollmentRepository;
@@ -68,6 +71,7 @@ public class StudentImportService {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +92,8 @@ public class StudentImportService {
         }
 
         persist(analysis);
+        auditService.record("STUDENT_IMPORT_COMMITTED", "STUDENT_IMPORT", null,
+                "rows=" + analysis.rows.size());
         return analysis.toReport(false, true);
     }
 

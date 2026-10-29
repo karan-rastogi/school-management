@@ -6,6 +6,7 @@ import com.school.auth.repository.OtpCodeRepository;
 import com.school.auth.service.PhoneNumbers;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
+import com.school.common.ratelimit.RateLimiter;
 import com.school.user.domain.User;
 import com.school.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -23,7 +24,7 @@ public class OtpService {
     private final OtpCodeRepository otpCodeRepository;
     private final UserRepository userRepository;
     private final OtpSender otpSender;
-    private final OtpRateLimiter rateLimiter;
+    private final RateLimiter rateLimiter;
     private final PasswordEncoder passwordEncoder;
     private final AuthProperties authProperties;
     private final Clock clock;
@@ -33,7 +34,7 @@ public class OtpService {
             OtpCodeRepository otpCodeRepository,
             UserRepository userRepository,
             OtpSender otpSender,
-            OtpRateLimiter rateLimiter,
+            RateLimiter rateLimiter,
             PasswordEncoder passwordEncoder,
             AuthProperties authProperties,
             Clock clock
