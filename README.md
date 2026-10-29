@@ -92,9 +92,21 @@ over CORS, so `CORS_ALLOWED_ORIGINS` must contain the dev-server origin.
 ### Production build
 
 ```bash
-cd backend  && mvn clean package      # target/school-management-backend-0.0.1-SNAPSHOT.jar
+cd backend  && ./mvnw clean package   # target/school-management-backend-0.0.1-SNAPSHOT.jar
 cd frontend && npm run build          # dist/
 ```
+
+The backend also ships a `backend/Dockerfile` (multi-stage, Java 21 JRE, non-root, honours `PORT`).
+Deploying:
+
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** — step-by-step manual deployment (Postgres on Neon/Supabase,
+  backend on Render/Fly.io, frontend on Vercel), smoke tests and rollback.
+- **[ENVIRONMENT.md](./ENVIRONMENT.md)** — every environment variable, with purpose and example.
+
+Set `SPRING_PROFILES_ACTIVE=prod` in a deployed environment to load
+`backend/src/main/resources/application-prod.yml`: configuration comes from environment variables,
+secrets have no defaults, Flyway migrates on startup, JPA runs `ddl-auto=validate`, and
+`server.forward-headers-strategy=framework`.
 
 ## Endpoints
 
@@ -126,7 +138,11 @@ cd frontend && npm run build          # dist/
 | `POST` | `/notices/{id}/holiday`       | `ADMIN` only                    |
 | `GET`  | `/notices/attachments/{id}`   | public (valid signed URL)       |
 | `GET`  | `/parent/notices`             | `PARENT` only                   |
-| —      | everything else               | authenticated                   |
+| —      | everything else               | denied (default-deny allow-list) |
+
+The filter chain only exposes the paths above; every other path is denied by default
+(`anyRequest().denyAll()`), so a new endpoint must be added here deliberately and given a role
+check on its controller before it is reachable.
 
 ```bash
 curl http://localhost:8080/api/health
@@ -231,14 +247,16 @@ RETURNING id;
 INSERT INTO user_roles (user_id, role) VALUES (<id>, 'ADMIN');
 ```
 
-With `OTP_SENDER=console` the code is printed to the backend log:
+With `OTP_SENDER=console` the backend logs that a code was sent, with the phone masked and the
+code itself **not** written to the log (logs must not carry credentials):
 
 ```
-OTP (dev console sender) for ****3210 is 483920 and is valid for 5 minutes.
+OTP (dev console sender) sent a code for ****3210 valid for 5 minutes. ...
 ```
 
-The phone is masked in logs; set `OTP_SENDER=sms` to route through an SMS provider
-(the bundled `SmsOtpSender` is a stub and returns `501 NOT_IMPLEMENTED` until one
+To read the code from the console during development, set
+`OTP_CONSOLE_EXPOSE_CODE=true` (never in production). Set `OTP_SENDER=sms` to route through an
+SMS provider (the bundled `SmsOtpSender` is a stub and returns `501 NOT_IMPLEMENTED` until one
 is wired up).
 
 ## Error format
@@ -297,6 +315,7 @@ never silently drift apart.
 | `V9__substitute_permissions.sql`      | `substitute_permissions`                                             |
 | `V10__attendance_query_message.sql`   | adds `attendance_queries.message`                                    |
 | `V11__notice_attachments.sql`         | adds notice attachment columns                                       |
+| `V12__audit_log.sql`                  | `audit_log` (role changes, QR-token regeneration, notice/admin actions) |
 
 Conventions:
 
@@ -352,22 +371,42 @@ These are enforced/observed throughout the codebase:
 ## Tests
 
 ```bash
-cd backend  && mvn test          # unit, MockMvc slice, and PostgreSQL integration tests
-cd frontend && npm run typecheck # tsc --noEmit
+cd backend  && ./mvnw test          # unit, MockMvc slice, and PostgreSQL integration tests
+cd frontend && npm run typecheck    # tsc --noEmit
 ```
+
+The Maven wrapper (`backend/mvnw`, `backend/mvnw.cmd`) pins Maven 3.9.16, so no
+local Maven install is required. On Windows `cmd.exe` run `mvnw test` instead of
+`./mvnw test`.
 
 The PostgreSQL integration tests (`AbstractPostgresTest` and its subclasses)
 run against a throwaway instance started via Testcontainers when Docker is
 available, and fall back to an embedded PostgreSQL otherwise — so they run on a
-plain `mvn test` without Docker. They are skipped only if neither can be
+plain `./mvnw test` without Docker. They are skipped only if neither can be
 started. `PersistenceMappingTest` runs every Flyway migration, lets Hibernate
 validate all entities against the result, and asserts the key constraints
 (daily attendance uniqueness, the notice scope/class rule, database-generated
 QR tokens).
 
-`AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
-attributes, `/me`, refresh rotation and reuse detection, logout, the role
-switcher, and the admin-only endpoint. `OtpServiceTest` covers the OTP rules in
-isolation (hashing, expiry, the five-attempt ceiling, single use, and the per-phone
-and per-client-address rate limits), and `OAuth2LoginSuccessHandlerTest` covers
-the "no auto-signup" rejection paths.
+The main flows are covered end-to-end (real Spring context + PostgreSQL):
+
+- `AuthFlowIntegrationTest` drives the real HTTP surface: OTP login, cookie
+  attributes, `/me`, refresh rotation and reuse detection, logout, the role
+  switcher, and the admin-only endpoint.
+- `OtpLoginIntegrationTest` covers the OTP expiry and the five-attempt ceiling
+  against the real `otp_codes` table.
+- `OAuth2LoginIntegrationTest` covers the Google rules: an unregistered address
+  is rejected with no account created, a deactivated account is refused, and a
+  pre-registered active account gets a session cookie.
+- `AttendanceApiIntegrationTest` covers QR scanning (own class ok, other class
+  warning, duplicate scan idempotent) and the paper-backfill window (allowed up
+  to three days for a teacher, admin only beyond that).
+- `ParentAttendanceApiIntegrationTest` covers a parent reading their own child
+  and the IDOR guard (403 for another parent's child), plus the attendance
+  percentage with holidays, half days and unmarked days.
+- `NoticeApiIntegrationTest` covers staff notice scoping, including a teacher
+  being unable to post to a class they do not teach.
+
+`OtpServiceTest` and `OAuth2LoginSuccessHandlerTest` additionally cover the same
+login rules in isolation (hashing, single use, per-phone and per-client-address
+rate limits, "no auto-signup").

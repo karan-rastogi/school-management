@@ -22,6 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
 @EnableMethodSecurity
@@ -48,6 +50,7 @@ public class SecurityConfig {
                         .successHandler(successHandler)
                         .failureHandler(failureHandler));
 
+        securityHeaders(http);
         return http.build();
     }
 
@@ -74,8 +77,12 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
+                // Default-deny: only the paths below are reachable. Every protected path is listed
+                // explicitly, so a new endpoint is denied until it is deliberately exposed here
+                // (together with its method-security role check on the controller).
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
                                 "/auth/otp/request",
@@ -84,9 +91,36 @@ public class SecurityConfig {
                                 "/auth/logout").permitAll()
                         // Signed-URL attachment downloads: the HMAC signature is the grant.
                         .requestMatchers("/notices/attachments/**").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/me", "/me/**").authenticated()
+                        .requestMatchers("/admin/**").authenticated()
+                        .requestMatchers("/parent/**").authenticated()
+                        .requestMatchers("/attendance/**").authenticated()
+                        .requestMatchers("/classes/**").authenticated()
+                        .requestMatchers("/notices/**").authenticated()
+                        .anyRequest().denyAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+        securityHeaders(http);
         return http.build();
+    }
+
+    /**
+     * Response security headers for a JSON API: HSTS, no MIME sniffing, framing denied, no referrer
+     * leakage and a restrictive CSP. HSTS is only sent on secure requests by Spring Security.
+     */
+    private static void securityHeaders(HttpSecurity http) throws Exception {
+        http.headers(headers -> headers
+                .httpStrictTransportSecurity(hsts -> hsts
+                        .includeSubDomains(true)
+                        .preload(true)
+                        .maxAgeInSeconds(31_536_000))
+                .contentTypeOptions(Customizer.withDefaults())
+                .frameOptions(frameOptions -> frameOptions.deny())
+                .referrerPolicy(referrer -> referrer
+                        .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .contentSecurityPolicy(csp -> csp
+                        .policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "Permissions-Policy", "geolocation=(), microphone=(), camera=()")));
     }
 }

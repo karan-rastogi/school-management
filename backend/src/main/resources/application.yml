@@ -104,12 +104,18 @@ app:
       length: ${OTP_LENGTH:6}
       max-attempts: ${OTP_MAX_ATTEMPTS:5}
       sender: ${OTP_SENDER:console}
+      # Development only: when true the console sender prints the code. Never enable in production.
+      console-expose-code: ${OTP_CONSOLE_EXPOSE_CODE:false}
       rate-limit:
         phone-requests: ${OTP_RATE_PHONE_REQUESTS:3}
         phone-verifies: ${OTP_RATE_PHONE_VERIFIES:10}
         ip-requests: ${OTP_RATE_IP_REQUESTS:10}
         ip-verifies: ${OTP_RATE_IP_VERIFIES:30}
         window: ${OTP_RATE_WINDOW:PT15M}
+    rate-limit:
+      # Sign-in entry point (/oauth2/authorization/**), per client address.
+      oauth-starts-per-ip: ${AUTH_RATE_OAUTH_STARTS_PER_IP:30}
+      window: ${AUTH_RATE_WINDOW:PT15M}
 
 logging:
   level:

@@ -304,7 +304,7 @@ class NoticeApiIntegrationTest extends AbstractPostgresTest {
         long id = postNotice(adminCookie(), Map.of("title", "Circular", "body", "See attached.", "scope", "GLOBAL"));
 
         MockMultipartFile file = new MockMultipartFile(
-                "file", "circular.pdf", "application/pdf", "PDF-CONTENT".getBytes(StandardCharsets.UTF_8));
+                "file", "circular.pdf", "application/pdf", "%PDF-CONTENT".getBytes(StandardCharsets.UTF_8));
 
         MvcResult uploaded = mockMvc.perform(multipart("/notices/" + id + "/attachment").file(file).cookie(adminCookie()))
                 .andExpect(status().isOk())
@@ -318,7 +318,7 @@ class NoticeApiIntegrationTest extends AbstractPostgresTest {
 
         mockMvc.perform(get(url))
                 .andExpect(status().isOk())
-                .andExpect(content().bytes("PDF-CONTENT".getBytes(StandardCharsets.UTF_8)));
+                .andExpect(content().bytes("%PDF-CONTENT".getBytes(StandardCharsets.UTF_8)));
 
         mockMvc.perform(get(url + "tampered"))
                 .andExpect(status().isForbidden());

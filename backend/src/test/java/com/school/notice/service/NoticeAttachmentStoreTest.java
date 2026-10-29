@@ -30,13 +30,13 @@ class NoticeAttachmentStoreTest {
     void storesLoadsAndDeletesAnAllowedFile(@TempDir Path directory) {
         NoticeAttachmentStore store = store(directory, 1024, List.of("application/pdf"));
         MockMultipartFile file = new MockMultipartFile(
-                "file", "sports-day.pdf", "application/pdf", "hello".getBytes(StandardCharsets.UTF_8));
+                "file", "sports-day.pdf", "application/pdf", "%PDF-hello".getBytes(StandardCharsets.UTF_8));
 
         StoredAttachment stored = store.store(file);
 
         assertThat(stored.fileName()).isEqualTo("sports-day.pdf");
         assertThat(stored.contentType()).isEqualTo("application/pdf");
-        assertThat(stored.sizeBytes()).isEqualTo(5);
+        assertThat(stored.sizeBytes()).isEqualTo(10);
         assertThat(store.load(stored.key()).exists()).isTrue();
 
         store.delete(stored.key());
@@ -63,6 +63,17 @@ class NoticeAttachmentStoreTest {
         assertThatThrownBy(() -> store.store(file))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("not allowed");
+    }
+
+    @Test
+    void rejectsAFileWhoseBytesDoNotMatchTheDeclaredType(@TempDir Path directory) {
+        NoticeAttachmentStore store = store(directory, 1024, List.of("application/pdf"));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "not-really.pdf", "application/pdf", "PK\u0003\u0004zip".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> store.store(file))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("do not match");
     }
 
     @Test

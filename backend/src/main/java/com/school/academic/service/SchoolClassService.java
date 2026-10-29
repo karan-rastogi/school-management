@@ -6,6 +6,7 @@ import com.school.academic.repository.AcademicYearRepository;
 import com.school.academic.repository.SchoolClassRepository;
 import com.school.academic.web.dto.SchoolClassRequest;
 import com.school.academic.web.dto.SchoolClassResponse;
+import com.school.audit.service.AuditService;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
 import com.school.common.web.PageResponse;
@@ -23,15 +24,18 @@ public class SchoolClassService {
     private final SchoolClassRepository schoolClassRepository;
     private final AcademicYearRepository academicYearRepository;
     private final StudentEnrollmentRepository studentEnrollmentRepository;
+    private final AuditService auditService;
 
     public SchoolClassService(
             SchoolClassRepository schoolClassRepository,
             AcademicYearRepository academicYearRepository,
-            StudentEnrollmentRepository studentEnrollmentRepository
+            StudentEnrollmentRepository studentEnrollmentRepository,
+            AuditService auditService
     ) {
         this.schoolClassRepository = schoolClassRepository;
         this.academicYearRepository = academicYearRepository;
         this.studentEnrollmentRepository = studentEnrollmentRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +84,9 @@ public class SchoolClassService {
         schoolClass.setSection(section);
         schoolClass.setAcademicYear(academicYear);
 
-        return toResponse(schoolClassRepository.saveAndFlush(schoolClass));
+        SchoolClass saved = schoolClassRepository.saveAndFlush(schoolClass);
+        auditService.record("CLASS_CREATED", "SCHOOL_CLASS", saved.getId());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -99,7 +105,9 @@ public class SchoolClassService {
         schoolClass.setSection(section);
         schoolClass.setAcademicYear(academicYear);
 
-        return toResponse(schoolClassRepository.saveAndFlush(schoolClass));
+        SchoolClass saved = schoolClassRepository.saveAndFlush(schoolClass);
+        auditService.record("CLASS_UPDATED", "SCHOOL_CLASS", saved.getId());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -109,6 +117,7 @@ public class SchoolClassService {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.CONFLICT,
                     "Students are still enrolled in this class. Move them before deleting it.");
         }
+        auditService.record("CLASS_DELETED", "SCHOOL_CLASS", id);
         schoolClassRepository.delete(schoolClass);
     }
 

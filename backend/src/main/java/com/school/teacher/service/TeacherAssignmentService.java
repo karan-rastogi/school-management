@@ -2,6 +2,7 @@ package com.school.teacher.service;
 
 import com.school.academic.domain.SchoolClass;
 import com.school.academic.repository.SchoolClassRepository;
+import com.school.audit.service.AuditService;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
 import com.school.common.web.PageResponse;
@@ -30,17 +31,20 @@ public class TeacherAssignmentService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public TeacherAssignmentService(
             TeacherAssignmentRepository teacherAssignmentRepository,
             UserRepository userRepository,
             UserRoleRepository userRoleRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.teacherAssignmentRepository = teacherAssignmentRepository;
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +90,10 @@ public class TeacherAssignmentService {
         assignment.setClassTeacher(request.classTeacher());
         assignment.setActive(request.active() == null || request.active());
 
-        return toResponse(teacherAssignmentRepository.saveAndFlush(assignment));
+        TeacherAssignment saved = teacherAssignmentRepository.saveAndFlush(assignment);
+        auditService.record("TEACHER_ASSIGNMENT_CREATED", "TEACHER_ASSIGNMENT", saved.getId(),
+                "classId=" + schoolClass.getId() + " teacherUserId=" + teacher.getId());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -113,12 +120,17 @@ public class TeacherAssignmentService {
             assignment.setActive(request.active());
         }
 
-        return toResponse(teacherAssignmentRepository.saveAndFlush(assignment));
+        TeacherAssignment saved = teacherAssignmentRepository.saveAndFlush(assignment);
+        auditService.record("TEACHER_ASSIGNMENT_UPDATED", "TEACHER_ASSIGNMENT", saved.getId(),
+                "classId=" + schoolClass.getId() + " teacherUserId=" + teacher.getId());
+        return toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
-        teacherAssignmentRepository.delete(find(id));
+        find(id);
+        auditService.record("TEACHER_ASSIGNMENT_DELETED", "TEACHER_ASSIGNMENT", id);
+        teacherAssignmentRepository.deleteById(id);
     }
 
     private void requireNoActiveClassTeacher(SchoolClass schoolClass, Long exceptId) {

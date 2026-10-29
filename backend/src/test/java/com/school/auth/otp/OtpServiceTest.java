@@ -5,6 +5,7 @@ import com.school.auth.domain.OtpCode;
 import com.school.auth.repository.OtpCodeRepository;
 import com.school.common.error.ApiException;
 import com.school.common.error.ErrorCode;
+import com.school.common.ratelimit.RateLimiter;
 import com.school.user.domain.User;
 import com.school.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +68,7 @@ class OtpServiceTest {
                 otpCodeRepository,
                 userRepository,
                 otpSender,
-                new OtpRateLimiter(clock),
+                new RateLimiter(clock),
                 passwordEncoder,
                 properties,
                 clock);

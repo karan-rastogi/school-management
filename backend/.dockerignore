@@ -1,0 +1,15 @@
+# Build output and VCS metadata must not reach the build context.
+target/
+.git/
+.gitignore
+.idea/
+*.iml
+
+# Local secrets and runtime data
+.env
+.env.*
+uploads/
+
+# Documentation and editor files
+*.md
+SECURITY_REVIEW.md
