@@ -28,8 +28,10 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            # Defaults keep the app bootable when AUTH_OAUTH_ENABLED=false; AuthFeatureGuard refuses
+            # to start when OAuth is enabled and these are left unconfigured.
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
             scope:
               - openid
               - email
@@ -65,6 +67,17 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   auth:
     frontend-base-url: ${FRONTEND_BASE_URL}
+    # Password login stays off in production (AuthFeatureGuard refuses to start if it is enabled).
+    password-login:
+      enabled: ${AUTH_PASSWORD_LOGIN_ENABLED:false}
+      max-failed-attempts: ${AUTH_PASSWORD_MAX_FAILED_ATTEMPTS:5}
+      lockout-duration: ${AUTH_PASSWORD_LOCKOUT_DURATION:PT15M}
+      rate-limit:
+        ip-attempts: ${AUTH_PASSWORD_RATE_IP_ATTEMPTS:20}
+        email-attempts: ${AUTH_PASSWORD_RATE_EMAIL_ATTEMPTS:10}
+        window: ${AUTH_PASSWORD_RATE_WINDOW:PT15M}
+    oauth:
+      enabled: ${AUTH_OAUTH_ENABLED:true}
     jwt:
       secret: ${JWT_SECRET}
       issuer: ${JWT_ISSUER:school-management}
@@ -76,6 +89,7 @@ app:
       secure: ${AUTH_COOKIE_SECURE:true}
       same-site: ${AUTH_COOKIE_SAME_SITE:None}
     otp:
+      enabled: ${AUTH_OTP_ENABLED:true}
       sender: ${OTP_SENDER:console}
       console-expose-code: false
   notices:

@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,15 +39,18 @@ public class UserAdminService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final AuditService auditService;
+    private final PasswordEncoder passwordEncoder;
 
     public UserAdminService(
             UserRepository userRepository,
             UserRoleRepository userRoleRepository,
-            AuditService auditService
+            AuditService auditService,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.auditService = auditService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -144,6 +148,19 @@ public class UserAdminService {
         auditService.record("USER_DELETED", "USER", id);
         userRoleRepository.deleteAll(userRoleRepository.findByUserId(id));
         userRepository.delete(user);
+    }
+
+    /**
+     * Sets a new password for a user and forces them to change it on next sign-in. The password is
+     * only ever stored as a BCrypt hash; it is never logged, returned or written to the audit trail.
+     */
+    @Transactional
+    public void setPassword(Long id, String newPassword) {
+        User user = find(id);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(true);
+        userRepository.saveAndFlush(user);
+        auditService.record("USER_PASSWORD_SET", "USER", id);
     }
 
     private void replaceRoles(Long userId, Collection<Role> roles) {

@@ -20,6 +20,10 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
+  if (user.mustChangePassword && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
+  }
+
   const required = requiredRole == null ? [] : Array.isArray(requiredRole) ? requiredRole : [requiredRole];
 
   if (required.length > 0 && !required.some((role) => user.roles.includes(role))) {

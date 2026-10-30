@@ -8,6 +8,7 @@ import com.school.auth.security.OAuth2LoginSuccessHandler;
 import com.school.auth.security.UserAccountService;
 import com.school.common.error.JsonAccessDeniedHandler;
 import com.school.common.error.JsonAuthenticationEntryPoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -29,8 +30,14 @@ import org.springframework.security.web.header.writers.StaticHeadersWriter;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /**
+     * The Google sign-in chain. It only exists when {@code app.auth.oauth.enabled=true} (the
+     * default); with the flag off the OAuth endpoints fall through to the API chain, where they are
+     * permitted but unhandled, so they answer 404 and no real OAuth client keys are required.
+     */
     @Bean
     @Order(1)
+    @ConditionalOnProperty(name = "app.auth.oauth.enabled", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain oauth2LoginFilterChain(
             HttpSecurity http,
             OAuth2LoginSuccessHandler successHandler,
@@ -85,13 +92,19 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
+                                "/auth/login",
+                                "/auth/config",
                                 "/auth/otp/request",
                                 "/auth/otp/verify",
                                 "/auth/refresh",
                                 "/auth/logout").permitAll()
+                        // With app.auth.oauth.enabled=false these fall through to the dispatcher and
+                        // answer 404; with the flag on the Order(1) chain above already handled them.
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // Signed-URL attachment downloads: the HMAC signature is the grant.
                         .requestMatchers("/notices/attachments/**").permitAll()
                         .requestMatchers("/me", "/me/**").authenticated()
+                        .requestMatchers("/auth/change-password").authenticated()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/parent/**").authenticated()
                         .requestMatchers("/attendance/**").authenticated()

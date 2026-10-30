@@ -38,7 +38,9 @@ public class UserAccountService {
                 ? preferredActiveRole
                 : roles.iterator().next();
 
-        return new AuthenticatedUser(user.getId(), user.getName(), user.getEmail(), user.getPhone(), roles, activeRole);
+        return new AuthenticatedUser(
+                user.getId(), user.getName(), user.getEmail(), user.getPhone(),
+                roles, activeRole, user.isMustChangePassword());
     }
 
     public Set<Role> rolesOf(Long userId) {

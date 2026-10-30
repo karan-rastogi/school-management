@@ -17,14 +17,24 @@ public final class AuthenticatedUser implements UserDetails {
     private final String phone;
     private final Set<Role> roles;
     private final Role activeRole;
+    private final boolean mustChangePassword;
 
-    public AuthenticatedUser(Long id, String name, String email, String phone, Set<Role> roles, Role activeRole) {
+    public AuthenticatedUser(
+            Long id,
+            String name,
+            String email,
+            String phone,
+            Set<Role> roles,
+            Role activeRole,
+            boolean mustChangePassword
+    ) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.roles = Set.copyOf(new LinkedHashSet<>(roles));
         this.activeRole = activeRole;
+        this.mustChangePassword = mustChangePassword;
     }
 
     public Long id() {
@@ -49,6 +59,10 @@ public final class AuthenticatedUser implements UserDetails {
 
     public Role activeRole() {
         return activeRole;
+    }
+
+    public boolean mustChangePassword() {
+        return mustChangePassword;
     }
 
     @Override

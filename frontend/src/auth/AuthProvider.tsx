@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { endSession, fetchCurrentUser, updateActiveRole, verifyOtp } from "../lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  changePassword as changePasswordRequest,
+  endSession,
+  fetchCurrentUser,
+  passwordLogin,
+  updateActiveRole,
+  verifyOtp,
+} from "../lib/api";
 import type { CurrentUser, Role } from "../types/api";
 import { AuthContext, type AuthContextValue, type AuthStatus } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
 
@@ -24,8 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [reload]);
 
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const current = await passwordLogin(email, password);
+    setUser(current);
+    setStatus("authenticated");
+    return current;
+  }, []);
+
   const signInWithOtp = useCallback(async (phone: string, code: string) => {
     const current = await verifyOtp(phone, code);
+    setUser(current);
+    setStatus("authenticated");
+    return current;
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const current = await changePasswordRequest(currentPassword, newPassword);
     setUser(current);
     setStatus("authenticated");
     return current;
@@ -35,10 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await endSession();
     } finally {
+      // Clear client state and cached protected data so nothing survives log-out, including when
+      // the user navigates back to a protected page.
+      queryClient.clear();
       setUser(null);
       setStatus("anonymous");
     }
-  }, []);
+  }, [queryClient]);
 
   const selectActiveRole = useCallback(async (role: Role) => {
     const current = await updateActiveRole(role);
@@ -47,8 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, reload, signInWithOtp, signOut, selectActiveRole }),
-    [status, user, reload, signInWithOtp, signOut, selectActiveRole],
+    () => ({
+      status,
+      user,
+      reload,
+      signInWithPassword,
+      signInWithOtp,
+      changePassword,
+      signOut,
+      selectActiveRole,
+    }),
+    [status, user, reload, signInWithPassword, signInWithOtp, changePassword, signOut, selectActiveRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

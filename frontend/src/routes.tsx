@@ -14,6 +14,7 @@ import { SubstitutesPage } from "./pages/admin/SubstitutesPage";
 import { TeacherAssignmentsPage } from "./pages/admin/TeacherAssignmentsPage";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -26,6 +27,14 @@ import { TeacherQueriesPage } from "./pages/TeacherQueriesPage";
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/auth/callback", element: <AuthCallbackPage /> },
+  {
+    path: "/change-password",
+    element: (
+      <ProtectedRoute>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/",
     element: (

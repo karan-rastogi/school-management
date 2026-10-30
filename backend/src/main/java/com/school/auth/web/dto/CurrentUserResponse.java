@@ -11,7 +11,8 @@ public record CurrentUserResponse(
         String email,
         String phone,
         Set<Role> roles,
-        Role activeRole
+        Role activeRole,
+        boolean mustChangePassword
 ) {
 
     public static CurrentUserResponse from(AuthenticatedUser user) {
@@ -21,6 +22,7 @@ public record CurrentUserResponse(
                 user.email(),
                 user.phone(),
                 user.roles(),
-                user.activeRole());
+                user.activeRole(),
+                user.mustChangePassword());
     }
 }

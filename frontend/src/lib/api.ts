@@ -1,6 +1,7 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import type {
   ApiError,
+  AuthConfig,
   CurrentUser,
   HealthResponse,
   OtpRequestResponse,
@@ -95,6 +96,21 @@ export async function fetchHealth(): Promise<HealthResponse> {
 
 export async function fetchCurrentUser(): Promise<CurrentUser> {
   const response = await apiClient.get<CurrentUser>("/me");
+  return response.data;
+}
+
+export async function fetchAuthConfig(): Promise<AuthConfig> {
+  const response = await apiClient.get<AuthConfig>("/auth/config");
+  return response.data;
+}
+
+export async function passwordLogin(email: string, password: string): Promise<CurrentUser> {
+  const response = await apiClient.post<CurrentUser>("/auth/login", { email, password });
+  return response.data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<CurrentUser> {
+  const response = await apiClient.post<CurrentUser>("/auth/change-password", { currentPassword, newPassword });
   return response.data;
 }
 

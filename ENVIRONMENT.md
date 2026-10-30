@@ -29,8 +29,8 @@ openssl rand -base64 48
 | `DB_PASSWORD` | Database password | *(secret — generated)* | Yes |
 | `JWT_SECRET` | HMAC key that signs the access tokens. **At least 32 bytes** or startup fails | *(secret — 48+ random chars)* | Yes |
 | `NOTICE_SIGNING_SECRET` | HMAC key for notice attachment signed URLs | *(secret — 48+ random chars)* | Yes |
-| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 client id | `1234567890-abc.apps.googleusercontent.com` | Yes |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret | *(secret)* | Yes |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 client id | `1234567890-abc.apps.googleusercontent.com` | Yes, when `AUTH_OAUTH_ENABLED=true` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret | *(secret)* | Yes, when `AUTH_OAUTH_ENABLED=true` |
 | `CORS_ALLOWED_ORIGINS` | Origin(s) allowed to call the API, comma-separated | `https://school.vercel.app` | Yes |
 | `FRONTEND_BASE_URL` | Where the browser is redirected after Google sign-in | `https://school.vercel.app` | Yes |
 
@@ -48,6 +48,15 @@ openssl rand -base64 48
 | `JWT_REFRESH_TOKEN_TTL` | Refresh-token lifetime | `P30D` | No |
 | `AUTH_COOKIE_SECURE` | Sets the `Secure` cookie flag (keep `true` in prod) | `true` | No |
 | `AUTH_COOKIE_SAME_SITE` | Cookie `SameSite` policy. Use `None` when the SPA and API are on different sites | `None` (prod) / `Lax` (local) | No |
+| `AUTH_PASSWORD_LOGIN_ENABLED` | Enables the simple email + password sign-in. For local testing only; the app refuses to start with this `true` and the `prod` profile | `false` | No |
+| `AUTH_OAUTH_ENABLED` | Enables Google sign-in; when `false` its endpoints return 404 and no Google keys are needed | `true` | No |
+| `AUTH_OTP_ENABLED` | Enables phone OTP sign-in; when `false` its endpoints return 404 | `true` | No |
+| `AUTH_PASSWORD_MAX_FAILED_ATTEMPTS` | Failed password attempts before the subject is locked | `5` | No |
+| `AUTH_PASSWORD_LOCKOUT_DURATION` | How long a subject stays locked after too many failures | `PT15M` | No |
+| `AUTH_PASSWORD_RATE_IP_ATTEMPTS` | Password login attempts per client address per window | `20` | No |
+| `AUTH_PASSWORD_RATE_EMAIL_ATTEMPTS` | Password login attempts per email per window | `10` | No |
+| `AUTH_PASSWORD_RATE_WINDOW` | Window used by the password-login rate limits | `PT15M` | No |
+| `SEED_TEST_PASSWORD` | Password for the seeded test accounts (password login + empty database only). Leave blank to skip seeding | *(secret)* | No |
 | `OTP_SENDER` | OTP delivery: `console` (dev) or `sms` (provider stub) | `console` | No |
 | `OTP_CONSOLE_EXPOSE_CODE` | Dev only: print the OTP code to the log. Never `true` in prod | `false` | No |
 | `OTP_TTL` | How long a code stays valid | `PT5M` | No |

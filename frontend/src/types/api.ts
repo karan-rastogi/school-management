@@ -51,6 +51,13 @@ export interface CurrentUser {
   phone?: string | null;
   roles: Role[];
   activeRole: Role;
+  mustChangePassword: boolean;
+}
+
+export interface AuthConfig {
+  passwordLoginEnabled: boolean;
+  oauthEnabled: boolean;
+  otpEnabled: boolean;
 }
 
 export interface OtpRequestResponse {

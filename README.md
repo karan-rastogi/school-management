@@ -114,7 +114,10 @@ secrets have no defaults, Flyway migrates on startup, JPA runs `ddl-auto=validat
 | ------ | ----------------------------- | ------------------------------- |
 | `GET`  | `/api/health`                 | public                          |
 | `GET`  | `/actuator/health`, `/actuator/info` | public                   |
+| `GET`  | `/auth/config`                | public (which sign-in methods are enabled) |
 | `GET`  | `/oauth2/authorization/google` | public (starts the Google flow) |
+| `POST` | `/auth/login`                 | public (email + password; 404 unless enabled) |
+| `POST` | `/auth/change-password`       | authenticated (email + password feature) |
 | `POST` | `/auth/otp/request`           | public                          |
 | `POST` | `/auth/otp/verify`            | public                          |
 | `POST` | `/auth/refresh`               | public (needs the refresh cookie) |
@@ -122,6 +125,7 @@ secrets have no defaults, Flyway migrates on startup, JPA runs `ddl-auto=validat
 | `GET`  | `/me`                         | authenticated                   |
 | `POST` | `/me/active-role`             | authenticated                   |
 | `GET`  | `/admin/users`                | `ADMIN` only                    |
+| `POST` | `/admin/users/{id}/password`  | `ADMIN` only (email + password feature; sets a password and forces a change) |
 | `GET`  | `/admin/id-cards/students/{id}` | `ADMIN` only (single ID card PDF) |
 | `GET`  | `/admin/id-cards/classes/{id}`  | `ADMIN` only (whole-class ID card sheet PDF) |
 | `GET`  | `/parent/children`            | `PARENT` only (own children)    |
@@ -159,7 +163,53 @@ curl http://localhost:8080/api/health
 
 ## Authentication
 
+### Sign-in methods
+
+Three sign-in methods exist; each is switched on or off by a feature flag
+(`@ConditionalOnProperty`, bound to environment variables). The Google OAuth and phone OTP code is
+kept but gated, so disabling a method returns `404` for its endpoints without deleting anything.
+
+| Flag | Environment variable | Default | When off |
+| ---- | -------------------- | ------- | -------- |
+| `app.auth.password-login.enabled` | `AUTH_PASSWORD_LOGIN_ENABLED` | `false` | `/auth/login`, `/auth/change-password`, `/admin/users/{id}/password` return `404` |
+| `app.auth.oauth.enabled` | `AUTH_OAUTH_ENABLED` | `true` | `/oauth2/**` returns `404`; no Google client keys are required to start |
+| `app.auth.otp.enabled` | `AUTH_OTP_ENABLED` | `true` | `/auth/otp/**` returns `404` |
+
+`GET /auth/config` is public and returns `{ "passwordLoginEnabled", "oauthEnabled", "otpEnabled" }`,
+so the SPA renders only the enabled methods. **Password login must not be enabled with the `prod`
+profile** — the application refuses to start (`AuthFeatureGuard`).
+
 ### Signing in
+
+**Email + password (local testing only).** `POST /auth/login` with `{"email","password"}` looks up
+an **active** user by email (case-insensitively), verifies the BCrypt hash, and issues the *same*
+`access_token` / `refresh_token` cookies as the other methods. A wrong password and an unknown
+email both return the identical generic `401 "Invalid email or password"`. Attempts are rate limited
+per client address and per email, and a subject is locked for `AUTH_PASSWORD_LOCKOUT_DURATION` after
+`AUTH_PASSWORD_MAX_FAILED_ATTEMPTS` failures. Passwords are stored only as BCrypt hashes and are
+never logged or returned. `POST /auth/change-password` (logged-in user) and
+`POST /admin/users/{id}/password` (admin, min 8 chars, audit-logged without the password) set a
+password; when an admin sets one it also sets `must_change_password`, and `/me` reports it so the SPA
+redirects to the change-password page.
+
+When password login is enabled **and the database is empty**, `TestDataSeeder` creates a small data
+set for exercising all three roles. Every password comes from `SEED_TEST_PASSWORD` (never hard-coded;
+blank skips seeding), all accounts are created with `must_change_password=false`, and the startup log
+records **counts only**:
+
+| Email | Role | Notes |
+| ----- | ---- | ----- |
+| `admin@test.com` | `ADMIN` | |
+| `classteacher@test.com` | `TEACHER` | class teacher of 6-A |
+| `maths@test.com` | `TEACHER` | Maths, 6-A and 7-A |
+| `hindi@test.com` | `TEACHER` | Hindi, 6-A only |
+| `parent1@test.com` | `PARENT` | two children, one in 6-A and one in 7-A |
+| `parent2@test.com` | `PARENT` | one child in 6-A |
+| `parent3@test.com` | `PARENT` | one child in 7-A |
+
+It also seeds the current academic year, classes 6-A and 7-A, 8 students (with QR tokens),
+enrollments, parent links, teacher assignments, a few holidays and 10 days of sample attendance
+(present, absent, late, half day and some unmarked days).
 
 **Google.** `GET /oauth2/authorization/google` runs the OAuth2 authorization-code
 flow. On success the handler looks the address up in `users`:
@@ -316,6 +366,7 @@ never silently drift apart.
 | `V10__attendance_query_message.sql`   | adds `attendance_queries.message`                                    |
 | `V11__notice_attachments.sql`         | adds notice attachment columns                                       |
 | `V12__audit_log.sql`                  | `audit_log` (role changes, QR-token regeneration, notice/admin actions) |
+| `V13__user_password.sql`              | adds `users.password_hash`, `users.must_change_password`              |
 
 Conventions:
 
@@ -410,3 +461,11 @@ The main flows are covered end-to-end (real Spring context + PostgreSQL):
 `OtpServiceTest` and `OAuth2LoginSuccessHandlerTest` additionally cover the same
 login rules in isolation (hashing, single use, per-phone and per-client-address
 rate limits, "no auto-signup").
+
+`PasswordLoginIntegrationTest` covers the email + password flow: cookie issuance, the
+identical `401` for a wrong password and an unknown email, the five-attempt lockout, logout,
+change-password and the admin password reset, and asserts the plaintext password never reaches
+the log. `AuthFeatureFlagsIntegrationTest` and `AuthDisabledMethodsIntegrationTest` prove that
+`/auth/config` reflects the flags and that a disabled method's endpoints return `404`.
+`TestDataSeederIntegrationTest` boots against an empty database and verifies the seeded data set,
+and `AuthFeatureGuardTest` proves password login is refused with the `prod` profile.

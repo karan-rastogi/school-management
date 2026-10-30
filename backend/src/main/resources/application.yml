@@ -91,6 +91,17 @@ app:
     max-age-seconds: 3600
   auth:
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    # Feature flags. A disabled method's endpoints return 404; its code is kept, only gated.
+    password-login:
+      enabled: ${AUTH_PASSWORD_LOGIN_ENABLED:false}
+      max-failed-attempts: ${AUTH_PASSWORD_MAX_FAILED_ATTEMPTS:5}
+      lockout-duration: ${AUTH_PASSWORD_LOCKOUT_DURATION:PT15M}
+      rate-limit:
+        ip-attempts: ${AUTH_PASSWORD_RATE_IP_ATTEMPTS:20}
+        email-attempts: ${AUTH_PASSWORD_RATE_EMAIL_ATTEMPTS:10}
+        window: ${AUTH_PASSWORD_RATE_WINDOW:PT15M}
+    oauth:
+      enabled: ${AUTH_OAUTH_ENABLED:true}
     jwt:
       secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-0123456789}
       issuer: ${JWT_ISSUER:school-management}
@@ -100,6 +111,7 @@ app:
       secure: ${AUTH_COOKIE_SECURE:true}
       same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
     otp:
+      enabled: ${AUTH_OTP_ENABLED:true}
       ttl: ${OTP_TTL:PT5M}
       length: ${OTP_LENGTH:6}
       max-attempts: ${OTP_MAX_ATTEMPTS:5}

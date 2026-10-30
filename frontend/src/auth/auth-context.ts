@@ -7,7 +7,9 @@ export interface AuthContextValue {
   status: AuthStatus;
   user: CurrentUser | null;
   reload: () => Promise<CurrentUser | null>;
+  signInWithPassword: (email: string, password: string) => Promise<CurrentUser>;
   signInWithOtp: (phone: string, code: string) => Promise<CurrentUser>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<CurrentUser>;
   signOut: () => Promise<void>;
   selectActiveRole: (role: Role) => Promise<void>;
 }
